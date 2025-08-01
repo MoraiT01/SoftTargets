@@ -1,3 +1,8 @@
+# Personal
+transformer-err/
+transformer-out/
+saves/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
