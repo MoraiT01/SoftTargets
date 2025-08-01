@@ -4,7 +4,7 @@ This Repository aims to show the differences between using hard and soft labels 
 ## Setup
 
 Run the following commands to setup the project.
-'''
+```
 # Environment setup
 conda create -n softtargets python=3.11
 conda activate softtargets
@@ -13,7 +13,7 @@ conda activate softtargets
 python setup.py
 # This downloads datasets with subset splits into `downloads`
 # and install all the necessary packages
-'''
+```
 
 ## Configurations
 ...
