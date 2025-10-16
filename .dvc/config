@@ -1,2 +1,7 @@
 [core]
     autostage = true
+    remote = gdrive_remote
+['remote "gdrive_remote"']
+    url = gdrive://1dd2MhE3mCJePQwt7CyIPYPWS3uJR2fl_
+    gdrive_use_service_account = true
+    gdrive_service_account_json_file_path = C:/Users/kastler/Documents/VisualStudioCode/SoftTargets/local/softlabelmachineunlearning-42f14c5028d7.json
