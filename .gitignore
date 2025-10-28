@@ -2,6 +2,8 @@
 transformer-err/
 transformer-out/
 saves/
+local/
+archive.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
