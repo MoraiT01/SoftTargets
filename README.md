@@ -3,17 +3,17 @@ This Repository aims to show the differences between using hard and soft labels 
 
 ## Setup
 
-Run the following commands to setup the project.
-```
-# Environment setup
-conda create -n softtargets python=3.11
-conda activate softtargets
+This project is managed using Docker.
 
-# Data setup
-python setup.py
-# This downloads datasets with subset splits into `downloads`
-# and install all the necessary packages
-```
+1.  **Build the Docker image:**
+    ```bash
+    docker build -t softtargets .
+    ```
+
+2.  **Run the container:**
+    ```bash
+    docker run softtargets
+    ```
 
 ## Configurations
 ...
