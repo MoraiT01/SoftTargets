@@ -11,17 +11,11 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -U pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Add the app directory to PYTHONPATH
-# This is the key step that replaces 'pip install -e .'
-# It allows Python to find and import modules from the 'src' directory
-# (e.g., 'from src.data.dataset_loaders import ...')
-ENV PYTHONPATH="${PYTHONPATH}:/app"
-
 # Copy the rest of the project source code into the container
 COPY . .
 
-# Run the data download script to fetch and extract the dataset
-RUN python download_data.py
+# Make the entrypoint script executable
+RUN chmod +x entrypoint.sh
 
-# Define the default command to run the main script
-CMD ["python", "main.py"]
+# Set the entrypoint to run our script when the container starts
+ENTRYPOINT ["/app/entrypoint.sh"]
