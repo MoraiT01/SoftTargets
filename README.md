@@ -12,7 +12,13 @@ This project is managed using Docker.
 
 2.  **Run the container:**
     ```bash
-    docker run softtargets
+    docker run it --rm -v ./data:/app/data softtargets
+    ```
+
+    For developement, clearML is used.
+    If you want to utilize it as well, use the following command:
+    ```
+    docker run -it --rm -v ./data:/app/data -v "</path/to/your/clearml.conf>":/root/clearml.conf softtargets
     ```
 
 ## Configurations

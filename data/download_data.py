@@ -1,3 +1,7 @@
+"""This file serves to download the dataset"""
+
+# It should only be use after the dataset is finilized
+
 import os
 import requests
 import sys
