@@ -3,7 +3,7 @@ transformer-err/
 transformer-out/
 saves/
 local/
-archive.zip
+*.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

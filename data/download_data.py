@@ -115,6 +115,10 @@ def main():
         except FileNotFoundError:
             print(f"Error: Archive file not found at {archive_path}.")
 
+        # Write the name of the created directory to the gitignore file in the dataset folder
+        with open(DATA_DIR / '.gitignore', 'a') as f:
+            f.write(f"{extraction_dir.name}\n")
+
         # 3. (Optional) Remove the original zip file after successful extraction
         # os.remove(archive_path)
 
