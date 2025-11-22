@@ -1,1 +1,4 @@
 /softtarget_dataset
+mnist_index.csv
+cmnist_index.csv
+fashion_mnist_index.csv

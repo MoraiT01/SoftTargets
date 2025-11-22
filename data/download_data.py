@@ -8,6 +8,8 @@ import sys
 import zipfile
 from pathlib import Path
 
+from utils import is_ignored
+
 # --- Configuration ---
 ZENODO_RECORD_ID = "17360336"
 DATA_DIR = Path("data")
@@ -117,7 +119,10 @@ def main():
 
         # Write the name of the created directory to the gitignore file in the dataset folder
         with open(DATA_DIR / '.gitignore', 'a') as f:
-            f.write(f"{extraction_dir.name}\n")
+            if is_ignored(extraction_dir.name, f'{DATA_DIR}/.gitignore'):
+                print(f"{extraction_dir.name} is already in the .gitignore file.")
+            else:
+                f.write(f"{extraction_dir.name}\n")
 
         # 3. (Optional) Remove the original zip file after successful extraction
         # os.remove(archive_path)
