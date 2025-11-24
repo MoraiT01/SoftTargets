@@ -39,19 +39,26 @@ class BaseDataset(Dataset):
             raise FileNotFoundError(f"CSV file not found at: {csv_file}")
 
         print(f"Loading dataset index from {csv_file}...")
-        self.data_frame = pd.read_csv(csv_file, index_col=0, sep=';')
+        self.data_frame = pd.read_csv(csv_file, sep=';')
         self.root_dir = root_dir
         self.transform = transform if transform is not None else DEFAULT_TRANSFORMS
-        self.class_to_idx = {cls: i for i, cls in enumerate(self.data_frame['Class_Label'].unique())}
-        self.idx_to_class = {i: cls for cls, i in self.class_to_idx.items()}
+        np_tensor_to_label = {cls: str(i) for i, cls in enumerate(self.data_frame['Class_Label'].unique())}
+        self.tensor_to_label = {}
+        # Convert class labels to one-hot vectors
+        for key in np_tensor_to_label.keys():
+            zeroer = torch.zeros(len(np_tensor_to_label))
+            index = np_tensor_to_label[key]
+            zeroer[int(index)] = 1
+            self.tensor_to_label[zeroer] = index
+        self.label_to_tensor = {i: cls for cls, i in self.tensor_to_label.items()}
 
     def _load_image(self, img_path: str) -> torch.Tensor:
         """Helper to load and transform an image."""
-        full_path = os.path.join(self.root_dir, img_path)
+        # full_path = os.path.join(self.root_dir, img_path)
         try:
-            image = Image.open(full_path).convert('RGB')
+            image = Image.open(img_path).convert('RGB')
         except Exception as e:
-            print(f"Error loading image at {full_path}: {e}")
+            print(f"Error loading image at {img_path}: {e}")
             # Return a zero tensor or handle error appropriately
             return torch.zeros(1, 28, 28) 
         
@@ -61,10 +68,10 @@ class BaseDataset(Dataset):
 
     def _get_label_tensor(self, class_label: str) -> torch.Tensor:
         """Helper to convert a class label string to a PyTorch LongTensor."""
-        idx = self.class_to_idx.get(class_label)
-        if idx is None:
+        tensor = self.label_to_tensor.get(class_label)
+        if tensor is None:
             raise ValueError(f"Unknown class label: {class_label}")
-        return torch.tensor(idx)
+        return tensor.detach().clone().requires_grad_(True)
         
     def __len__(self) -> int:
         """This should be overridden by subclasses."""
@@ -123,6 +130,11 @@ class TrainTestDataset(BaseDataset):
         label_tensor = self._get_label_tensor(class_label)
 
         return image_tensor, label_tensor
+
+    def get_tags(self, idx: int) -> Dict:
+        if idx >= len(self.subset_df):
+            raise IndexError("Index out of bounds for the current dataset subset.")
+        return self.subset_df.loc[idx].to_dict()
 
 # --- 2. Unlearning Pair Dataset Class ---
 

@@ -84,9 +84,12 @@ def create_ml_csv(root_dir, output_csv_path="dataset_index.csv"):
 #     └── 004.png
 # ---------------------
 
-# Run the function
-for name in DATASETS:
-    create_ml_csv(os.path.join(ROOT_FOLDER, "softtarget_dataset", name), f"data/{name}_index.csv") 
+def main(datasets: list[str]):
+    for name in datasets:
+        create_ml_csv(os.path.join(ROOT_FOLDER, "softtarget_dataset", name), f"data/{name}_index.csv")
+
+if __name__ == "__main__":
+    main(DATASETS)
 
 # --- Example Output Structure ---
 # If you ran the script, the CSV would look like this:
