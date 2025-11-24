@@ -44,7 +44,7 @@ def data_preprocessing(dataset: str):
         print(f"CSV for {dataset} already exists")
 
 @PipelineDecorator.component()
-def model_creation() -> Module:
+def model_creation(architecute: str) -> Module:
     # TODO
     pass
 
@@ -108,8 +108,11 @@ def main():
     # 1. Prepare the data and the model
     data_loading()
     data_preprocessing(args.dataset)
-    train_dl    = TrainTestDataset(csv_file=f"data/{args.dataset}_index.csv", root_dir=f"data/{args.dataset}", split="train")
+    train_ds    = TrainTestDataset(csv_file=f"data/{args.dataset}_index.csv", root_dir=f"data/{args.dataset}", split="train")
     test_dl     = TrainTestDataset(csv_file=f"data/{args.dataset}_index.csv", root_dir=f"data/{args.dataset}", split="test")
+    unlearn_ds  = UnlearningPairDataset(csv_file=f"data/{args.dataset}_index.csv", root_dir=f"data/{args.dataset}", split="train")
+    # report the datasets to clearml: TODO
+    ...
     model       = model_creation(args.architecture)
     # 2. Train the model
     # 3. Evaluate the model
