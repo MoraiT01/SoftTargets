@@ -136,14 +136,31 @@ def training(train_loader: DataLoader, model: Module, architecture: str) -> Modu
     return trained_model
 
 @PipelineDecorator.component()
-def evaluation() -> Dict[str, float]:
-    # TODO
-    pass
+def evaluation(model: Module, test_loader: DataLoader) -> Dict[str, float]: 
+    """
+    Evaluates the model on the test dataset. (Currently a placeholder)
+    """
+    print("Running placeholder evaluation...")
+    # Placeholder: replace with logic from src.eval.main when ready
+    dummy_results = {
+        "accuracy": 0.50,
+        "loss": 0.70,
+        "avg_para_change": 0.30,
+    }
+    return dummy_results
 
 @PipelineDecorator.component()
-def unlearning() -> Module:
-    # TODO
-    pass
+def unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, mu_algo: str) -> Module:
+    """
+    Runs the specified machine unlearning algorithm on the trained model.
+    
+    Args:
+        trained_model: The pre-trained model.
+        unlearn_ds: The UnlearningPairDataset containing forget and retain data.
+        mu_algo: The name of the unlearning algorithm (e.g., 'graddiff').
+    """
+    # Delegate the heavy lifting to the run_unlearning function in the unlearn module
+    return unlearn.run_unlearning(trained_model, unlearn_ds, mu_algo)
 
 def main():
     """
@@ -197,13 +214,14 @@ def main():
     trained_model = training(train_dl, model, args.architecture)
 
     # 4. Evaluate the model
-    evaluation_results = ...(trained_model, test_dl)
-    print(f"Evaluation Results: {evaluation_results}")
+    evaluation_results = evaluation(trained_model, test_dl)
+    print(f"Pre-Unlearning Evaluation Results: {evaluation_results}")
+
     # 5. Unlearn the model
-    unlearned_model = ...(trained_model, unlearn_ds, args.mu_algo)
+    unlearned_model = unlearning(trained_model, unlearn_ds, args.mu_algo)
 
     # 6. Evaluate the unlearned model
-    unlearned_evaluation_results = ...(unlearned_model, test_dl)
+    unlearned_evaluation_results = evaluation(unlearned_model, test_dl)
     print(f"Unlearned Evaluation Results: {unlearned_evaluation_results}")
     print("\nExperiment finished.")
 
