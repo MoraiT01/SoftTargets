@@ -17,7 +17,8 @@ from clearml.automation.controller import PipelineDecorator
 from src.training.models.cnn import CNN
 from src.training.models.mlp import TwoLayerPerceptron
 
-from typing import Dict, Any
+from pathlib import Path
+from typing import Dict, Any, Tuple
 import yaml
 
 # --- Define your Hyperparameters ---
@@ -62,24 +63,43 @@ def load_training_config(architecture: str) -> Dict[str, Any]:
 
 # --- Define your pipeline components ---
 @PipelineDecorator.component()
-def data_loading():
+def data_loading() -> Path:
     try:
-        download_data.main()
+        path = download_data.main()
     except Exception as e:
         print(f"\nFATAL ERROR during data download: {e}")
         sys.exit(1)
 
+    return path
+
 @PipelineDecorator.component()
-def data_preprocessing(dataset: str):
+def data_preprocessing(args: Any, path: Path) -> Tuple[DataLoader, DataLoader, UnlearningPairDataset]:
     """
         return: A Dictionary consiting of: Train Dataloader, Test Dataloader
     """
     # no need to create csv if it already exists
-    if not os.path.exists(f"data/{dataset}_index.csv"):
-        print(f"Creating CSV for {dataset}")
-        create_csv.main([dataset])
+    if not os.path.exists(f"{path}/{args.dataset}_index.csv"):
+        print(f"Creating CSV for {args.dataset}")
+        create_csv.main([args.dataset])
     else:
-        print(f"CSV for {dataset} already exists")
+        print(f"CSV for {args.dataset} already exists")
+
+    # Load architecture-specific config to get the batch size
+    temp_config = load_training_config(args.architecture)
+    batch_size = temp_config.get('batch_size', 64)
+    
+    # Instantiate the Train Dataset
+    train_ds    = TrainTestDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="train") 
+    
+    # Create the training DataLoader
+    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    
+    test_ds     = TrainTestDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="test")
+    test_dl     = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+    
+    unlearn_ds  = UnlearningPairDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="train")
+
+    return train_dl, test_dl, unlearn_ds    
 
 @PipelineDecorator.component()
 def model_creation(architecute: str) -> Module:
@@ -142,15 +162,15 @@ def main():
     parser.add_argument(
         "--mu_algo", 
         type=str, 
-        default="gradient_ascent", # This is the default value
-        help="The machine unlearning algorithm to use (e.g., 'gradient_ascent', 'rmu')."
+        default="graddiff", # This is the default value
+        help="The machine unlearning algorithm to use (e.g., 'graddiff', 'rmu')."
     )
     
     parser.add_argument(
         "--architecture", 
         type=str, 
-        default="simple_cnn", # This is the default value
-        help="The model architecture to use (e.g., 'simple_cnn', 'resnet18')."
+        default="cnn", # This is the default value
+        help="The model architecture to use (e.g., 'cnn', 'mlp')."
     )
 
     # --- Parse the arguments ---
@@ -167,26 +187,11 @@ def main():
     # --- Run the pipeline ---
     ###
     # 1. Prepare the data and the model
-    data_loading()
-    data_preprocessing(args.dataset)
-    
-    # CHANGE: Load architecture-specific config to get the batch size
-    temp_config = load_training_config(args.architecture)
-    batch_size = temp_config.get('batch_size', 64)
-    
-    # Instantiate the Train Dataset
-    train_ds    = TrainTestDataset(csv_file=f"data/{args.dataset}_index.csv", root_dir=".", split="train") 
-    
-    # Create the training DataLoader
-    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    
-    test_ds     = TrainTestDataset(csv_file=f"data/{args.dataset}_index.csv", root_dir=".", split="test")
-    test_dl     = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
-    
-    unlearn_ds  = UnlearningPairDataset(csv_file=f"data/{args.dataset}_index.csv", root_dir=".", split="train")
-    
+    path = data_loading()
+    train_dl, test_dl, unlearn_ds = data_preprocessing(args, path)
+     
     # 2. Create the model
-    model       = model_creation(args.architecture)
+    model = model_creation(args.architecture)
 
     # 3. Train the model
     trained_model = training(train_dl, model, args.architecture)

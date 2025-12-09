@@ -74,7 +74,7 @@ def download_file(url: str, filepath: Path):
             os.remove(filepath)
         raise
 
-def main():
+def main() -> Path:
     try:
         # 1. Ensure the 'data' directory exists
         DATA_DIR.mkdir(exist_ok=True)
@@ -88,8 +88,8 @@ def main():
         
         # Skip download if the file already exists
         if local_filepath.exists():
-             print(f"File already exists at {local_filepath}. Skipping download.")
-             return
+            print(f"File already exists at {local_filepath}. Skipping download.")
+            return DATA_DIR
              
         # 4. Download the file
         download_file(download_url, local_filepath)
@@ -127,6 +127,8 @@ def main():
         # 3. (Optional) Remove the original zip file after successful extraction
         # os.remove(archive_path)
 
+        return DATA_DIR
+
 if __name__ == "__main__":
     # Ensure 'requests' is available if running this script directly
     try:
@@ -135,4 +137,6 @@ if __name__ == "__main__":
         print("The 'requests' library is required. Please install it with: pip install requests")
         sys.exit(1)
         
-    main()
+    path = main()
+
+    print(f"Data downloaded to: {path}")
