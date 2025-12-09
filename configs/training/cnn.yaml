@@ -1,0 +1,9 @@
+# configurations/cnn.yaml
+
+training:
+  epochs: 15
+  batch_size: 64
+  learning_rate: 0.0005
+  optimizer: Adam
+  loss_function: NLLLoss
+  save_path: "saves/cnn_trained_model.pth"

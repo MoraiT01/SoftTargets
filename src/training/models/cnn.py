@@ -7,7 +7,7 @@ class CNN(torch.nn.Module):
         super(CNN, self).__init__()
         
         # Convolutional layers
-        self.conv1 = torch.nn.Conv2d(3, 32, kernel_size=3, padding=1)  # Input channels=3 for RGB
+        self.conv1 = torch.nn.Conv2d(1, 32, kernel_size=3, padding=1)  # Input channels=3 for RGB
         self.conv2 = torch.nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.conv3 = torch.nn.Conv2d(64, 128, kernel_size=3, padding=1)
         

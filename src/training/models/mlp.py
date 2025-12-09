@@ -20,6 +20,9 @@ class TwoLayerPerceptron(torch.nn.Module):
         """
         Defines the forward pass of the model
         """
+        # Flatten the tensor from [Batch, 1, H, W] to [Batch, H*W]
+        x = x.view(x.size(0), -1) # Correctly flattens to [Batch, 784] for grayscale
+
         x = self.fc1(x)
         x = torch.relu(x)
         x = self.fc3(x)

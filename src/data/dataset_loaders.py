@@ -56,11 +56,12 @@ class BaseDataset(Dataset):
         """Helper to load and transform an image."""
         # full_path = os.path.join(self.root_dir, img_path)
         try:
-            image = Image.open(img_path).convert('RGB')
+            # CHANGE: Convert to 'L' (Grayscale) instead of 'RGB'
+            image = Image.open(img_path).convert('L') #
         except Exception as e:
             print(f"Error loading image at {img_path}: {e}")
             # Return a zero tensor or handle error appropriately
-            return torch.zeros(1, 28, 28) 
+            return torch.zeros(1, 28, 28)
         
         if self.transform:
             return self.transform(image) # type: ignore

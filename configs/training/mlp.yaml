@@ -1,0 +1,9 @@
+# configurations/mlp.yaml
+
+training:
+  epochs: 10
+  batch_size: 64
+  learning_rate: 0.001
+  optimizer: Adam
+  loss_function: NLLLoss
+  save_path: "saves/mlp_trained_model.pth"
