@@ -6,7 +6,8 @@ from torch.utils.data.dataloader import default_collate
 from torchvision import transforms
 from PIL import Image
 import os
-from typing import Tuple, Any, Dict, List
+import random
+from typing import Tuple, Any, Dict, List, Optional, Literal
 # --- Configuration Constants ---
 # after running the indexing script.
 CSV_FILE_PATH = "data/mnist_index.csv" 
@@ -88,28 +89,62 @@ class TrainTestDataset(BaseDataset):
     """
     A standard PyTorch dataset for training or testing a model.
     Filters the data based on the 'train_split' column.
+Extended to support sampling modes (all/forget/retain), class filtering, 
+    and dynamic forget column selection.
     """
-    def __init__(self, csv_file: str, root_dir: str, split: str = 'train', transform=None):
+    def __init__(self, 
+                 csv_file: str, 
+                 root_dir: str, 
+                 split: str = 'train', 
+                 sample_mode: Literal["all", "forget", "retain"] = "all",
+                 classes: Optional[List[str]] = None,
+                 forget_split_col: str = "f1_split",
+                 transform=None):
         """
         Args:
+            csv_file (str): Path to the CSV.
+            root_dir (str): Root directory for images.
             split (str): 'train' (train_split=1) or 'test' (train_split=0).
+            sample_mode (str): 'all', 'forget' (only forget samples), or 'retain' (only non-forget samples).
+            classes (List[str]): List of class labels to include. If None or empty, includes all.
+            forget_split_col (str): The column name in the CSV defining the forget split (1=Forget, 0=Retain).
+            transform: Optional transform.
         """
         super().__init__(csv_file, root_dir, transform)
         
-        # Determine the filter condition based on the desired split
+        # 1. Determine the filter condition based on the desired split
         if split.lower() == 'train':
-            # Train samples are those with 'train_split' set to 1
-            filter_condition = 1
+            split_filter = 1
         elif split.lower() == 'test':
-            # Test samples are those with 'train_split' set to 0
-            filter_condition = 0
+            split_filter = 0
         else:
             raise ValueError("Split must be 'train' (train_split=1) or 'test' (train_split=0).")
 
-        # Filter the DataFrame to include only the relevant split data
+        # Initial filtering by Train/Test Split
         # NOTE: Assumes 'train_split' column is present in the CSV
-        self.subset_df = self.data_frame[self.data_frame['train_split'] == filter_condition].reset_index(drop=True)
-        print(f"Loaded {split} split with {len(self.subset_df)} samples.")
+        subset_df = self.data_frame[self.data_frame['train_split'] == split_filter]
+
+        # 2. Filter by Classes (if provided)
+        if classes:
+            # Convert column to string to ensure matching with the provided string list
+            subset_df = subset_df[subset_df['Class_Label'].astype(str).isin(classes)]
+
+        # 3. Filter by Sample Mode (Forget vs Retain)
+        if sample_mode != "all":
+            if forget_split_col not in subset_df.columns:
+                raise ValueError(f"Forget split column '{forget_split_col}' not found in CSV.")
+            
+            if sample_mode == "forget":
+                # Keep only rows where the forget column is 1
+                subset_df = subset_df[subset_df[forget_split_col] == 1]
+            elif sample_mode == "retain":
+                # Keep only rows where the forget column is 0
+                subset_df = subset_df[subset_df[forget_split_col] == 0]
+            else:
+                raise ValueError(f"Invalid sample_mode: {sample_mode}. Must be 'all', 'forget', or 'retain'.")
+
+        self.subset_df = subset_df.reset_index(drop=True)
+        print(f"Loaded {split} split (mode='{sample_mode}', classes={classes}) with {len(self.subset_df)} samples.")
 
     def __len__(self) -> int:
         """Returns the total number of samples in the filtered subset."""
@@ -147,7 +182,12 @@ class UnlearningPairDataset(BaseDataset):
     It now supports a train/test split based on the 'train_split' column.
     Length is based on the number of forget samples (f1_split=1) within the chosen split.
     """
-    def __init__(self, csv_file: str, root_dir: str, split: str = 'train', transform=None):
+    def __init__(self, 
+                 csv_file: str, 
+                 root_dir: str, 
+                 split: str = 'train', 
+                 forget_split_col: str = "f1_split", 
+                 transform=None):
         super().__init__(csv_file, root_dir, transform)
         
         # 1. Determine the filter condition based on the desired train/test split
@@ -159,20 +199,23 @@ class UnlearningPairDataset(BaseDataset):
             raise ValueError("Split must be 'train' (train_split=1) or 'test' (train_split=0).")
 
         # 2. Filter the base DataFrame by train/test split first
-        # NOTE: Assumes 'train_split' column is present in the CSV
         filtered_df = self.data_frame[self.data_frame['train_split'] == filter_condition]
 
-        # 3. Separate the filtered DataFrame into Forget and Non-Forget sets based on f1_split
-        # Assumes 'f1_split' column is present: 1 for Forget, 0 for Non-Forget
-        self.forget_df = filtered_df[filtered_df['f1_split'] == 1].reset_index(drop=True)
-        self.non_forget_df = filtered_df[filtered_df['f1_split'] == 0].reset_index(drop=True)
+        # Check if the requested forget column exists
+        if forget_split_col not in filtered_df.columns:
+            raise ValueError(f"Forget split column '{forget_split_col}' not found in CSV.")
+
+        # 3. Separate the filtered DataFrame into Forget and Non-Forget sets based on the forget column
+        # Uses the dynamic 'forget_split_col': 1 for Forget, 0 for Non-Forget
+        self.forget_df = filtered_df[filtered_df[forget_split_col] == 1].reset_index(drop=True)
+        self.non_forget_df = filtered_df[filtered_df[forget_split_col] == 0].reset_index(drop=True)
 
         if len(self.forget_df) == 0:
-            raise ValueError(f"No Forget (f1_split=1) samples found in the '{split}' split.")
+            raise ValueError(f"No Forget ({forget_split_col}=1) samples found in the '{split}' split.")
         if len(self.non_forget_df) == 0:
-            raise ValueError(f"No Non-Forget (f1_split=0) samples found in the '{split}' split.")
+            raise ValueError(f"No Non-Forget ({forget_split_col}=0) samples found in the '{split}' split.")
 
-        print(f"Loaded Unlearning Dataset ({split} split): {len(self.forget_df)} Forget samples and {len(self.non_forget_df)} Non-Forget samples.")
+        print(f"Loaded Unlearning Dataset ({split} split using '{forget_split_col}'): {len(self.forget_df)} Forget samples and {len(self.non_forget_df)} Non-Forget samples.")
 
 
     def __len__(self) -> int:
@@ -197,7 +240,10 @@ class UnlearningPairDataset(BaseDataset):
         
         # 2. Get the Non-Forget Sample Data
         # Use modulo arithmetic to wrap around the non-forget set
-        nf_idx = idx % len(self.non_forget_df)
+        
+        # nf_idx = idx % len(self.non_forget_df) # This might bring some bias into it
+        # NOTE: Maybe random sampling could also work nicely
+        nf_idx = random.randint(0, len(self.non_forget_df) - 1)
         non_forget_row = self.non_forget_df.loc[nf_idx]
         nf_img_path = str(non_forget_row['Path'])
         nf_class_label = str(non_forget_row['Class_Label'])

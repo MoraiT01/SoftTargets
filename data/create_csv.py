@@ -42,14 +42,14 @@ def create_ml_csv(root_dir, output_csv_path="dataset_index.csv"):
                     data.append({
                         'Path': file_path.replace("\\", "/"),
                         'Class_Label': class_label.replace("e", ""),
-                        'train_split': 0,
+                        'train_split': 0 if "test" in filename else 1,
                         'f1_split': 1,
                     })
                 else:
                     data.append({
                         'Path': file_path.replace("\\", "/"),
                         'Class_Label':class_label,
-                        'train_split': 0,
+                        'train_split':  0 if "test" in filename else 1,
                         'f1_split': 0,
                     })
 

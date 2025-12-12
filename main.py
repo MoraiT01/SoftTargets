@@ -16,6 +16,7 @@ from clearml.automation.controller import PipelineDecorator
 
 from src.training.models.cnn import CNN
 from src.training.models.mlp import TwoLayerPerceptron
+from src.eval.main import evaluate
 
 from pathlib import Path
 from typing import Dict, Any, Tuple
@@ -73,9 +74,9 @@ def data_loading() -> Path:
     return path
 
 @PipelineDecorator.component()
-def data_preprocessing(args: Any, path: Path) -> Tuple[DataLoader, DataLoader, UnlearningPairDataset]:
+def data_preprocessing(args: Any, path: Path) -> Tuple[DataLoader, DataLoader, UnlearningPairDataset, DataLoader]:
     """
-        return: A Dictionary consiting of: Train Dataloader, Test Dataloader
+        return: Tuple of: Train Dataloader, Test Dataloader, UnlearningPairDataset, Retain Dataloader
     """
     # no need to create csv if it already exists
     if not os.path.exists(f"{path}/{args.dataset}_index.csv"):
@@ -99,7 +100,10 @@ def data_preprocessing(args: Any, path: Path) -> Tuple[DataLoader, DataLoader, U
     
     unlearn_ds  = UnlearningPairDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="train")
 
-    return train_dl, test_dl, unlearn_ds    
+    retain_ds   = TrainTestDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="train", sample_mode="retain")
+    retain_dl   = DataLoader(retain_ds, batch_size=batch_size, shuffle=True)
+
+    return train_dl, test_dl, unlearn_ds, retain_dl
 
 @PipelineDecorator.component()
 def model_creation(architecute: str) -> Module:
@@ -136,18 +140,31 @@ def training(train_loader: DataLoader, model: Module, architecture: str) -> Modu
     return trained_model
 
 @PipelineDecorator.component()
-def evaluation(model: Module, test_loader: DataLoader) -> Dict[str, float]: 
+def evaluation(model: Module, args: Any, path: Path) -> Dict[str, float]: 
     """
     Evaluates the model on the test dataset. (Currently a placeholder)
     """
-    print("Running placeholder evaluation...")
-    # Placeholder: replace with logic from src.eval.main when ready
-    dummy_results = {
-        "accuracy": 0.50,
-        "loss": 0.70,
-        "avg_para_change": 0.30,
-    }
-    return dummy_results
+    
+    # Load architecture-specific config to get the batch size
+    temp_config = load_training_config(args.architecture)
+    batch_size = temp_config.get('batch_size', 64)
+    # NOTE: The loop over the range, similating the number of classes, will remain hard coded for now
+    cls_dl = {
+        i: DataLoader(
+            dataset=TrainTestDataset(
+                    csv_file=f"{path}/{args.dataset}_index.csv",
+                    root_dir=".",
+                    split="train",
+                    classes=[str(i)]
+                ),
+            batch_size=batch_size,
+            shuffle=False,
+            ) for i in range(10)
+        }
+    
+    result_dict = evaluate(model, cls_dl)
+
+    return result_dict
 
 @PipelineDecorator.component()
 def unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, mu_algo: str) -> Module:
@@ -205,13 +222,17 @@ def main():
     ###
     # 1. Prepare the data and the model
     path = data_loading()
-    train_dl, test_dl, unlearn_ds = data_preprocessing(args, path)
+    train_dl, test_dl, unlearn_ds, retain_dl = data_preprocessing(args, path)
      
     # 2. Create the model
     model = model_creation(args.architecture)
 
-    # 3. Train the model
+    # 3a. Train the model
     trained_model = training(train_dl, model, args.architecture)
+
+    # 3b. Train the baseline model
+    # This one is only trained on the retain data, therefore it represents the ideal behaviour of the model after unlearning
+    baseline_model = training(retain_dl, model, args.architecture)
 
     # 4. Evaluate the model
     evaluation_results = evaluation(trained_model, test_dl)
