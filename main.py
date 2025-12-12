@@ -16,7 +16,7 @@ from clearml.automation.controller import PipelineDecorator
 
 from src.training.models.cnn import CNN
 from src.training.models.mlp import TwoLayerPerceptron
-from src.eval.main import evaluate
+from src.eval.main import evaluate, compare_models, visualize_pipeline_results
 
 from pathlib import Path
 from typing import Dict, Any, Tuple
@@ -167,6 +167,16 @@ def evaluation(model: Module, args: Any, path: Path) -> Dict[str, float]:
     return result_dict
 
 @PipelineDecorator.component()
+def evaluation_difference(original_model: Module, unlearned_model: Module) -> Dict[str, float]:
+    """
+    Evaluates the quantitive parameter difference between the original and unlearned models.
+    """
+
+    result_dict = compare_models(original_model, unlearned_model)
+
+    return result_dict
+
+@PipelineDecorator.component()
 def unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, mu_algo: str) -> Module:
     """
     Runs the specified machine unlearning algorithm on the trained model.
@@ -178,6 +188,18 @@ def unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, mu_algo
     """
     # Delegate the heavy lifting to the run_unlearning function in the unlearn module
     return unlearn.run_unlearning(trained_model, unlearn_ds, mu_algo)
+
+@PipelineDecorator.component()
+def plotter(
+    trained_res: Dict[str, float],
+    base_res: Dict[str, float],
+    unlearned_res: Dict[str, float],
+    param_changes:Dict[str, float],
+    ):  
+    """
+        Calls the visualization module to generate and display/save visualizations.
+    """
+    visualize_pipeline_results(trained_res, base_res, unlearned_res, param_changes)
 
 def main():
     """
@@ -234,16 +256,28 @@ def main():
     # This one is only trained on the retain data, therefore it represents the ideal behaviour of the model after unlearning
     baseline_model = training(retain_dl, model, args.architecture)
 
-    # 4. Evaluate the model
-    evaluation_results = evaluation(trained_model, test_dl)
-    print(f"Pre-Unlearning Evaluation Results: {evaluation_results}")
-
-    # 5. Unlearn the model
+    # 4. Unlearn the model
     unlearned_model = unlearning(trained_model, unlearn_ds, args.mu_algo)
 
-    # 6. Evaluate the unlearned model
-    unlearned_evaluation_results = evaluation(unlearned_model, test_dl)
+    # 5a. Evaluate Baseline Model
+    baseline_evaluation_results = evaluation(baseline_model, args=args, path=path)
+    print(f"Baseline Evaluation Results: {baseline_evaluation_results}")
+
+    # 5b. Evaluate the trained model
+    trained_evaluation_results = evaluation(trained_model, args=args, path=path)
+    print(f"Trained Evaluation Results: {trained_evaluation_results}")
+
+    # 5c. Evaluate the unlearned model
+    unlearned_evaluation_results = evaluation(unlearned_model, args=args, path=path)
     print(f"Unlearned Evaluation Results: {unlearned_evaluation_results}")
+
+    # 6. Evaluate differences between models
+    difference = evaluation_difference(original_model=trained_model, unlearned_model=unlearned_model)
+    print(f"Model Differences between trained and unlearned: {difference}")
+
+    # 7. Ploting
+    plotter(trained_res=trained_evaluation_results, base_res=baseline_evaluation_results, unlearned_res=unlearned_evaluation_results, param_changes=difference)
+
     print("\nExperiment finished.")
 
 
