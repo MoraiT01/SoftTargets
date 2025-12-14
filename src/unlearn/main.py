@@ -66,31 +66,4 @@ def run_unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, alg
     # Run the unlearning process
     unlearned_model = unlearning_alg.unlearn(unlearn_dl)
     
-    # --- SAVE AND UPLOAD ---
-    # Fix for Cause 2: Explicit filename, do not rely on previous model path
-    filename = f"{alg_name_lower}_unlearned.pth"
-    save_path = f"saves/{filename}"
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    
-    # 1. Save locally
-    torch.save(unlearned_model.state_dict(), save_path)
-    
-    # 2. Upload to ClearML
-    task = Task.current_task()
-    if task:
-        print(f"Uploading {filename} to ClearML...")
-        # wait=True ensures upload finishes before we proceed
-        task.upload_artifact(name="Unlearned Model", artifact_object=save_path, wait=True)
-        
-        # 3. Remove local file
-        for i in range(5):
-            try:
-                os.remove(save_path)
-                print(f"Local file {save_path} removed.")
-                break
-            except OSError as e:
-                print(f"Attempt {i+1}/5: Could not remove file ({e}). Retrying in 1s...")
-                time.sleep(1)
-            
-    unlearned_model.set_path(save_path) 
     return unlearned_model
