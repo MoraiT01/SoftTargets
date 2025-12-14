@@ -191,7 +191,7 @@ def plotter(
     """
     visualize_pipeline_results(trained_res, base_res, unlearned_res, param_changes)
 
-@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="1.3.0")
+@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="1.3.1")
 def main(args: Any):
     """
     Main function to parse arguments and run the training/unlearning pipeline.

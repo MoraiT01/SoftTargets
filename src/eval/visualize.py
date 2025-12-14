@@ -42,7 +42,6 @@ def plot_metric_comparison(
         title: Chart title.
     """
     fig = go.Figure()
-    eval_task = Task.init(project_name='softtargets', task_name='Metric Comparison')
 
     # Iterate over each model (Trained, Base, Unlearned)
     for model_name, results in models_data.items():
@@ -90,7 +89,7 @@ def plot_parameter_changes(param_changes: Dict[str, float]):
         xaxis_title="Comparison",
         yaxis_title="Avg Abs Difference",
     )
-    eval_task = Task.init(project_name='softtargets', task_name='Average Parameter Changes')
+    eval_task = Task.current_task()
 
     eval_task.get_logger().report_scalar(title="Parameter Change", series="parameter_change", value=param_changes['avg_parameter_change'])
 
@@ -104,7 +103,7 @@ def plot_dataset_stats(df: pd.DataFrame, forget_col: str = "f1_split") -> None:
         df: The dataframe containing the dataset metadata.
         forget_col: The column name indicating the forget split (1=Forget, 0=Retain).
     """
-    eval_task = Task.init(project_name='softtargets', task_name='Dataset Stats')
+    eval_task = Task.current_task()
 
     if forget_col not in df.columns:
         print(f"Warning: Column '{forget_col}' not found in dataframe. Skipping dataset stats plot.")
@@ -171,15 +170,17 @@ def visualize_all(
         "Target (Retain-Only)": base_metrics,
         "Unlearned": unlearned_metrics
     }
+
+    eval_task = Task.current_task()
     
     # 2. Dispatch to specific plotting functions
     print("Generating Accuracy Comparison Plot...")
     fig_acc = plot_metric_comparison(models_map, "accuracy", "Model Accuracy Comparison")
-    fig_acc.show()
+    eval_task.get_logger().report_plotly(title="Accuracy Comparison", series="accuracy_comparison", figure=fig_acc)
     
     print("Generating Loss Comparison Plot...")
     fig_loss = plot_metric_comparison(models_map, "loss", "Model Loss Comparison")
-    fig_loss.show()
+    eval_task.get_logger().report_plotly(title="Loss Comparison", series="loss_comparison", figure=fig_loss)
     
     # 3. Visualize Parameter Changes (if provided)
     if param_diffs:
