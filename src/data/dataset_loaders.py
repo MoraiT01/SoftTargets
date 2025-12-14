@@ -1,5 +1,6 @@
 import torch
 import pandas as pd
+from torch import nn
 from torch.utils.data import Dataset, DataLoader
 # Import default_collate for clean batching of individual lists
 from torch.utils.data.dataloader import default_collate 
@@ -217,6 +218,47 @@ class UnlearningPairDataset(BaseDataset):
 
         print(f"Loaded Unlearning Dataset ({split} split using '{forget_split_col}'): {len(self.forget_df)} Forget samples and {len(self.non_forget_df)} Non-Forget samples.")
 
+        # Storage for soft targets
+        self.use_soft_targets = False
+        self.soft_targets_forget: Dict[int, torch.Tensor] = {}
+        self.soft_targets_retain: Dict[int, torch.Tensor] = {}
+
+    def make_softtargets(self, model: nn.Module, device: torch.device):
+        """
+        Parses the model to generate soft targets (predicted probabilities) 
+        for all samples in the dataset.
+        """
+        self.use_soft_targets = True
+        model.eval()
+        model.to(device)
+
+        print("Generating soft targets for Forget Set...")
+        for i in range(len(self.forget_df)):
+            row = self.forget_df.loc[i]
+            img_path = str(row['Path'])
+            # Load and prepare image (add batch dim)
+            img_tensor = self._load_image(img_path).unsqueeze(0).to(device)
+
+            with torch.no_grad():
+                # Model outputs log_softmax, so we apply exp to get probabilities
+                output = model(img_tensor)
+                probs = torch.exp(output).squeeze(0).cpu()
+                
+            self.soft_targets_forget[i] = probs
+
+        print("Generating soft targets for Retain Set...")
+        for i in range(len(self.non_forget_df)):
+            row = self.non_forget_df.loc[i]
+            img_path = str(row['Path'])
+            img_tensor = self._load_image(img_path).unsqueeze(0).to(device)
+
+            with torch.no_grad():
+                output = model(img_tensor)
+                probs = torch.exp(output).squeeze(0).cpu()
+
+            self.soft_targets_retain[i] = probs
+            
+        print("Soft targets generated successfully.")
 
     def __len__(self) -> int:
         """
@@ -250,12 +292,20 @@ class UnlearningPairDataset(BaseDataset):
 
         # 3. Load Tensors
         f_image_tensor = self._load_image(f_img_path)
-        f_label_tensor = self._get_label_tensor(f_class_label)
-        
         nf_image_tensor = self._load_image(nf_img_path)
-        nf_label_tensor = self._get_label_tensor(nf_class_label)
 
-        # 4. Return as a pair of dictionaries for clarity
+        # 4. Get Labels (Soft or Hard)
+        if self.use_soft_targets:
+            # Use stored soft targets
+            # Note: We detach/clone to be safe, though they are already on CPU
+            f_label_tensor = self.soft_targets_forget[idx].detach().clone()
+            nf_label_tensor = self.soft_targets_retain[nf_idx].detach().clone()
+        else:
+            # Use standard one-hot hard labels
+            f_label_tensor = self._get_label_tensor(f_class_label)
+            nf_label_tensor = self._get_label_tensor(nf_class_label)
+
+        # 5. Return as a pair of dictionaries for clarity
         forget_sample = {
             'image': f_image_tensor,
             'label': f_label_tensor,
