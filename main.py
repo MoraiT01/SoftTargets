@@ -1,7 +1,6 @@
 import argparse
-import src.training.train as train #
-import src.unlearn.main as unlearn #
-import src.eval.main as eval
+import src.training.train as train
+import src.unlearn.main as unlearn
 
 # You can import from your 'src' folder because of the PYTHONPATH in the Dockerfile
 from src.data.dataset_loaders import TrainTestDataset, UnlearningPairDataset
@@ -21,7 +20,6 @@ from src.training.models.cnn import CNN
 from src.training.models.mlp import TwoLayerPerceptron
 from src.eval.main import evaluate, compare_models, visualize_pipeline_results
 
-from pathlib import Path
 from typing import Dict, Any, Tuple
 
 # --- Define your Hyperparameters ---
@@ -193,12 +191,20 @@ def plotter(
     """
     visualize_pipeline_results(trained_res, base_res, unlearned_res, param_changes)
 
-@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="1.1.1")
+@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="1.2.0")
 def main(args: Any):
     """
     Main function to parse arguments and run the training/unlearning pipeline.
     """
-
+    
+    # checking if the hyperparameters are supported
+    if args.architecture not in ["cnn", "mlp"]:
+        raise ValueError(f"Unsupported architecture: {args.architecture}. Options are 'cnn' and 'mlp'.")
+    if args.mu_algo not in ["grad_ascent", "graddiff"]:
+        raise ValueError(f"Unsupported machine unlearning algorithm: {args.mu_algo}. Options are 'grad_ascent' and 'graddiff'.")
+    if args.dataset not in ["mnist", "fashion_mnist"]:
+        raise ValueError(f"Unsupported dataset: {args.dataset}. Options are 'mnist' and 'fashion_mnist'.")
+    
     # --- Use the configurations in your script ---
     print("--- Starting Experiment ---")
     print(f"Dataset: {args.dataset}")

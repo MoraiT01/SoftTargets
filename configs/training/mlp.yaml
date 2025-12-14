@@ -2,8 +2,8 @@
 
 training:
   epochs: 10
-  batch_size: 64
-  learning_rate: 0.001
+  batch_size: 32
+  learning_rate: 0.0001
   optimizer: Adam
   loss_function: NLLLoss
   save_path: "saves/mlp_trained_model.pth"

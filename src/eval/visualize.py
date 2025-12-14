@@ -2,7 +2,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import re
 import pandas as pd
-from typing import Dict, Any, List, Optional
+from typing import Dict, Optional, Literal
+
+from clearml import Task
 
 def _extract_labels_and_values(metrics: Dict[str, float], metric_type: str) -> Dict[str, float]:
     """
@@ -28,7 +30,7 @@ def _extract_labels_and_values(metrics: Dict[str, float], metric_type: str) -> D
 
 def plot_metric_comparison(
     models_data: Dict[str, Dict[str, float]], 
-    metric_name: str, 
+    metric_name: Literal["accuracy", "loss"],
     title: str
 ) -> go.Figure:
     """
@@ -40,6 +42,7 @@ def plot_metric_comparison(
         title: Chart title.
     """
     fig = go.Figure()
+    eval_task = Task.init(project_name='softtargets', task_name='Metric Comparison')
 
     # Iterate over each model (Trained, Base, Unlearned)
     for model_name, results in models_data.items():
@@ -63,13 +66,12 @@ def plot_metric_comparison(
         xaxis_title="Class / Split",
         yaxis_title=metric_name.capitalize(),
         barmode='group',
-        template="plotly_white",
         legend_title="Model Version"
     )
     
     return fig
 
-def plot_parameter_changes(param_changes: Dict[str, float]) -> go.Figure:
+def plot_parameter_changes(param_changes: Dict[str, float]):
     """
     Visualizes parameter differences (scalars).
     """
@@ -87,10 +89,10 @@ def plot_parameter_changes(param_changes: Dict[str, float]) -> go.Figure:
         title="Average Parameter Change (vs Original Trained Model)",
         xaxis_title="Comparison",
         yaxis_title="Avg Abs Difference",
-        template="plotly_white"
     )
-    
-    return fig
+    eval_task = Task.init(project_name='softtargets', task_name='Average Parameter Changes')
+
+    eval_task.get_logger().report_scalar(title="Parameter Change", series="parameter_change", value=param_changes['avg_parameter_change'])
 
 def plot_dataset_stats(df: pd.DataFrame, forget_col: str = "f1_split") -> None:
     """
@@ -102,6 +104,8 @@ def plot_dataset_stats(df: pd.DataFrame, forget_col: str = "f1_split") -> None:
         df: The dataframe containing the dataset metadata.
         forget_col: The column name indicating the forget split (1=Forget, 0=Retain).
     """
+    eval_task = Task.init(project_name='softtargets', task_name='Dataset Stats')
+
     if forget_col not in df.columns:
         print(f"Warning: Column '{forget_col}' not found in dataframe. Skipping dataset stats plot.")
         return
@@ -133,9 +137,8 @@ def plot_dataset_stats(df: pd.DataFrame, forget_col: str = "f1_split") -> None:
         xaxis_title="Class Label",
         yaxis_title="Number of Samples",
         barmode='stack', # Stacked histogram
-        template="plotly_white"
     )
-    fig_hist.show()
+    eval_task.get_logger().report_plotly(title="Dataset Composition", series="dataset_composition", figure=fig_hist)
     
     # --- 2. Pie Chart (Total Unlearned vs Retained) ---
     total_counts = df_plot['Status'].value_counts()
@@ -151,7 +154,7 @@ def plot_dataset_stats(df: pd.DataFrame, forget_col: str = "f1_split") -> None:
         title=f"Total Dataset Composition ({forget_col})",
         template="plotly_white"
     )
-    fig_pie.show()
+    eval_task.get_logger().report_plotly(title="Dataset Composition", series="dataset_composition", figure=fig_pie)
 
 def visualize_all(
     trained_metrics: Dict[str, float], 
@@ -181,5 +184,5 @@ def visualize_all(
     # 3. Visualize Parameter Changes (if provided)
     if param_diffs:
         print("Generating Parameter Change Plot...")
-        fig_params = plot_parameter_changes(param_diffs)
-        fig_params.show()
+        plot_parameter_changes(param_diffs)
+        
