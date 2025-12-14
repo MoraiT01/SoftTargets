@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=posthoc # specify the job name for monitoring
-#SBATCH --output=transformer-out/posthoc_JOB_%j.out # specify the output file
-#SBATCH --error=transformer-err/posthoc_JOB_%j.err # specify the error file
+#SBATCH --output=transformer-out/softtargets_JOB_%j.out # specify the output file
+#SBATCH --error=transformer-err/softtargets_JOB_%j.err # specify the error file
 #SBATCH --nodes=1 # As we have single node it should be always set as 1
 #SBATCH --cpus-per-task=4 # Number of CPUs
 #SBATCH --gres=gpu:nvidia_a100_80gb_pcie_3g.39gb:1  # Allocate 1/2 GPU resources with specified configurations
