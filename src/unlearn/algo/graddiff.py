@@ -1,9 +1,8 @@
-from torch import nn
 from torch.nn import Module
 
 from typing import Any
 
-from unlearn.base import BaseUnlearningAlgorithm
+from ..base import BaseUnlearningAlgorithm
 
 class GradientDifference(BaseUnlearningAlgorithm):
     """

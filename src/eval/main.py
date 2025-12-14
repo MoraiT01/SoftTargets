@@ -9,18 +9,12 @@ from typing import Optional
 import src.eval.metrics as metrics
 import src.eval.visualize as visualize
 
+# ClearML Imports
+from clearml import Task
+
 def evaluate(model: Module, dataloaders: Dict[Any, DataLoader]) -> Dict[str, float]:
     """
     Dispatcher function that evaluates the model on a dictionary of DataLoaders.
-    
-    Args:
-        model: The PyTorch model to evaluate.
-        dataloaders: A dictionary where keys are identifiers (e.g., class names or indices) 
-                     and values are DataLoaders.
-                     
-    Returns:
-        Dict[str, float]: A dictionary containing loss and accuracy for each loader.
-                          Keys will be formatted as "{key}_loss" and "{key}_accuracy".
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -37,26 +31,34 @@ def evaluate(model: Module, dataloaders: Dict[Any, DataLoader]) -> Dict[str, flo
         results[f"class_{key}_loss"] = avg_loss
         results[f"class_{key}_accuracy"] = accuracy
         
-        # Optional: Print per-split progress (helpful for debugging)
-        # print(f"  Split '{key}': Loss={avg_loss:.4f}, Acc={accuracy:.4f}")
-
-    # Calculate overall averages across all splits (optional, but often useful)
+    # Calculate overall averages
     if len(dataloaders) > 0:
         results["mean_loss"] = sum(results[f"class_{k}_loss"] for k in dataloaders) / len(dataloaders)
         results["mean_accuracy"] = sum(results[f"class_{k}_accuracy"] for k in dataloaders) / len(dataloaders)
+
+    # --- CLEARML INTEGRATION ---
+    # Get the current task (this will be the 'evaluation' pipeline step)
+    task = Task.current_task()
+    if task:
+        logger = task.get_logger()
+        # Log every metric in the results dictionary
+        for metric_name, value in results.items():
+            # We split the name to categorize it nicely in the UI (e.g., Accuracy/class_0)
+            if "accuracy" in metric_name:
+                series = metric_name.replace("_accuracy", "")
+                logger.report_scalar(title="Accuracy", series=series, value=value, iteration=0)
+            elif "loss" in metric_name:
+                series = metric_name.replace("_loss", "")
+                logger.report_scalar(title="Loss", series=series, value=value, iteration=0)
+            else:
+                logger.report_scalar(title="Metrics", series=metric_name, value=value, iteration=0)
+    # ---------------------------
 
     return results
 
 def compare_models(model_orig: Module, model_unlearned: Module) -> Dict[str, float]:
     """
     Compares two models to quantify the parameter changes.
-    
-    Args:
-        model_orig: The original trained model.
-        model_unlearned: The model after the unlearning process.
-        
-    Returns:
-        Dict[str, float]: A dictionary containing the average parameter change.
     """
     print("Comparing model parameters...")
     
@@ -64,6 +66,17 @@ def compare_models(model_orig: Module, model_unlearned: Module) -> Dict[str, flo
     avg_diff = metrics.calculate_parameter_difference(model_orig, model_unlearned)
     
     print(f"Average Parameter Change: {avg_diff:.6f}")
+    
+    # --- CLEARML INTEGRATION ---
+    task = Task.current_task()
+    if task:
+        task.get_logger().report_scalar(
+            title="Model_Diff", 
+            series="parameter_change", 
+            value=avg_diff, 
+            iteration=0
+        )
+    # ---------------------------
     
     return {
         "avg_parameter_change": avg_diff

@@ -7,6 +7,7 @@ import os
 # Import the custom classes and DataLoader from your project
 from src.unlearn.algo import gradascent, graddiff
 from src.data.dataset_loaders import UnlearningPairDataset, UnlearningDataLoader 
+from clearml import Task
 
 # Define a mapping from algorithm name to its class
 ALGORITHM_MAP = {
@@ -68,11 +69,27 @@ def run_unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, alg
     # Run the unlearning process
     unlearned_model = unlearning_alg.unlearn(unlearn_dl)
     
-    # Save the unlearned model 
-    save_path = f"saves/{alg_name_lower}_{unlearned_model.get_path().split('/')[-1].replace('trained_model', 'unlearned')}"
+    # --- SAVE ONLY TO CLEARML ---
+    filename = f"{alg_name_lower}_unlearned.pth"
+    save_path = f"saves/{filename}"
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    
+    # 1. Save locally temporarily
     torch.save(unlearned_model.state_dict(), save_path)
-    unlearned_model.set_path(save_path)
-    print(f"Unlearned model saved to: {save_path}")
-
+    
+    # 2. Upload to ClearML
+    task = Task.current_task()
+    if task:
+        print(f"Uploading {filename} to ClearML...")
+        task.upload_artifact(name="Unlearned Model", artifact_object=save_path)
+        
+        # 3. Remove local file to save space
+        try:
+            os.remove(save_path)
+            print(f"Local file {save_path} removed.")
+        except OSError as e:
+            print(f"Error removing local file: {e}")
+            
+    unlearned_model.set_path(save_path) # Keep path for reference in code, even if file is gone
+    
     return unlearned_model

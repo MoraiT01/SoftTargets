@@ -1,10 +1,11 @@
 import os
 import pandas as pd
-from utils import is_ignored
+from data.utils import is_ignored
+from src.eval.visualize import plot_dataset_stats
 
 DATASETS = ["mnist", "cmnist", "fashion_mnist"]
 # **Change 'path/to/your/dataset/root_folder' to the actual path!**
-ROOT_FOLDER = "data" 
+ROOT_FOLDER = "data"
 
 def create_ml_csv(root_dir, output_csv_path="dataset_index.csv"):
     """

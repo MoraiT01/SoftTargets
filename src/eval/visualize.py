@@ -1,6 +1,7 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import re
+import pandas as pd
 from typing import Dict, Any, List, Optional
 
 def _extract_labels_and_values(metrics: Dict[str, float], metric_type: str) -> Dict[str, float]:
@@ -91,6 +92,67 @@ def plot_parameter_changes(param_changes: Dict[str, float]) -> go.Figure:
     
     return fig
 
+def plot_dataset_stats(df: pd.DataFrame, forget_col: str = "f1_split") -> None:
+    """
+    Generates visualizations for the dataset statistics:
+    1. Stacked Histogram: Samples per class, colored by Forget/Retain status.
+    2. Pie Chart: Total proportion of Forget vs Retain samples.
+    
+    Args:
+        df: The dataframe containing the dataset metadata.
+        forget_col: The column name indicating the forget split (1=Forget, 0=Retain).
+    """
+    if forget_col not in df.columns:
+        print(f"Warning: Column '{forget_col}' not found in dataframe. Skipping dataset stats plot.")
+        return
+
+    # Prepare data for plotting
+    # Map 0/1 to descriptive labels
+    df_plot = df.copy()
+    df_plot['Status'] = df_plot[forget_col].map({1: 'Forget', 0: 'Retain'})
+    
+    # --- 1. Stacked Histogram (Samples per Class) ---
+    # Group by Class and Status to get counts
+    class_counts = df_plot.groupby(['Class_Label', 'Status']).size().reset_index(name='Count')
+    
+    fig_hist = go.Figure()
+    
+    for status, color in [('Retain', 'royalblue'), ('Forget', 'firebrick')]:
+        subset = class_counts[class_counts['Status'] == status]
+        fig_hist.add_trace(go.Bar(
+            name=status,
+            x=subset['Class_Label'],
+            y=subset['Count'],
+            marker_color=color,
+            text=subset['Count'],
+            textposition='auto'
+        ))
+        
+    fig_hist.update_layout(
+        title="Dataset Distribution: Samples per Class (Forget vs Retain)",
+        xaxis_title="Class Label",
+        yaxis_title="Number of Samples",
+        barmode='stack', # Stacked histogram
+        template="plotly_white"
+    )
+    fig_hist.show()
+    
+    # --- 2. Pie Chart (Total Unlearned vs Retained) ---
+    total_counts = df_plot['Status'].value_counts()
+    
+    fig_pie = go.Figure(data=[go.Pie(
+        labels=total_counts.index, 
+        values=total_counts.values,
+        hole=.3, # Donut chart style looks nice
+        marker_colors=['royalblue' if l == 'Retain' else 'firebrick' for l in total_counts.index]
+    )])
+    
+    fig_pie.update_layout(
+        title=f"Total Dataset Composition ({forget_col})",
+        template="plotly_white"
+    )
+    fig_pie.show()
+
 def visualize_all(
     trained_metrics: Dict[str, float], 
     base_metrics: Dict[str, float], 
@@ -99,12 +161,6 @@ def visualize_all(
 ):
     """
     Dispatcher function that generates and displays/saves all visualizations.
-    
-    Args:
-        trained_metrics: Results from the original model.
-        base_metrics: Results from the retrained (gold standard) model.
-        unlearned_metrics: Results from the unlearned model.
-        param_diffs: Dictionary containing parameter difference scalars.
     """
     # 1. Organize data for the plotters
     models_map = {
@@ -127,6 +183,3 @@ def visualize_all(
         print("Generating Parameter Change Plot...")
         fig_params = plot_parameter_changes(param_diffs)
         fig_params.show()
-        
-    # Note: In a headless environment (like ClearML or Docker without display), 
-    # you might want to use fig.write_html("path.html") instead of fig.show().

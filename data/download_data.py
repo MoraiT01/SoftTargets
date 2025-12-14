@@ -8,7 +8,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-from utils import is_ignored
+from data.utils import is_ignored
 
 # --- Configuration ---
 ZENODO_RECORD_ID = "17360336"
@@ -75,59 +75,63 @@ def download_file(url: str, filepath: Path):
         raise
 
 def main() -> Path:
-    try:
-        # 1. Ensure the 'data' directory exists
-        DATA_DIR.mkdir(exist_ok=True)
-        print(f"Ensured data directory exists at: {DATA_DIR.resolve()}")
-        
-        # 2. Get the download URL and filename
-        download_url, filename = get_download_url(ZENODO_RECORD_ID)
-        
-        # 3. Define the full local path
-        local_filepath = DATA_DIR / filename
-        
-        # Skip download if the file already exists
-        if local_filepath.exists():
-            print(f"File already exists at {local_filepath}. Skipping download.")
-            return DATA_DIR
-             
-        # 4. Download the file
-        download_file(download_url, local_filepath)
-        
-    except Exception as e:
-        print(f"\nFATAL ERROR during data download: {e}")
-        sys.exit(1)
 
+    # NOTE: This will remain hardcoded for now 
+    if os.path.exists(os.path.join(DATA_DIR, "softtarget_dataset")):
+        print(f"Dataset already exists at {DATA_DIR.resolve()}. Skipping download.")
     else:
-        # Define the paths
-        archive_path = local_filepath # Path where you saved the downloaded file
-        extraction_dir = DATA_DIR / "softtarget_dataset"  # Directory where you want to extract the contents
-
-        # 1. Create the target directory if it doesn't exist
-        os.makedirs(extraction_dir, exist_ok=True)
-
-        # 2. Extract the archive
         try:
-            with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-                print(f"Extracting {archive_path} to {extraction_dir}...")
-                zip_ref.extractall(extraction_dir)
-            print("Extraction complete.")
-        except zipfile.BadZipFile:
-            print(f"Error: {archive_path} is not a valid ZIP file or is corrupted.")
-        except FileNotFoundError:
-            print(f"Error: Archive file not found at {archive_path}.")
+            # 1. Ensure the 'data' directory exists
+            DATA_DIR.mkdir(exist_ok=True)
+            print(f"Ensured data directory exists at: {DATA_DIR.resolve()}")
+            
+            # 2. Get the download URL and filename
+            download_url, filename = get_download_url(ZENODO_RECORD_ID)
+            
+            # 3. Define the full local path
+            local_filepath = DATA_DIR / filename
+            
+            # Skip download if the file already exists
+            if local_filepath.exists():
+                print(f"File already exists at {local_filepath}. Skipping download.")
+                return DATA_DIR
+                
+            # 4. Download the file
+            download_file(download_url, local_filepath)
+            
+        except Exception as e:
+            print(f"\nFATAL ERROR during data download: {e}")
+            sys.exit(1)
+        else:
+            # Define the paths
+            archive_path = local_filepath # Path where you saved the downloaded file
+            extraction_dir = DATA_DIR / "softtarget_dataset"  # Directory where you want to extract the contents
 
-        # Write the name of the created directory to the gitignore file in the dataset folder
-        with open(DATA_DIR / '.gitignore', 'a') as f:
-            if is_ignored(extraction_dir.name, f'{DATA_DIR}/.gitignore'):
-                print(f"{extraction_dir.name} is already in the .gitignore file.")
-            else:
-                f.write(f"{extraction_dir.name}\n")
+            # 1. Create the target directory if it doesn't exist
+            os.makedirs(extraction_dir, exist_ok=True)
 
-        # 3. (Optional) Remove the original zip file after successful extraction
-        # os.remove(archive_path)
+            # 2. Extract the archive
+            try:
+                with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                    print(f"Extracting {archive_path} to {extraction_dir}...")
+                    zip_ref.extractall(extraction_dir)
+                print("Extraction complete.")
+            except zipfile.BadZipFile:
+                print(f"Error: {archive_path} is not a valid ZIP file or is corrupted.")
+            except FileNotFoundError:
+                print(f"Error: Archive file not found at {archive_path}.")
 
-        return DATA_DIR
+            # Write the name of the created directory to the gitignore file in the dataset folder
+            with open(DATA_DIR / '.gitignore', 'a') as f:
+                if is_ignored(extraction_dir.name, f'{DATA_DIR}/.gitignore'):
+                    print(f"{extraction_dir.name} is already in the .gitignore file.")
+                else:
+                    f.write(f"{extraction_dir.name}\n")
+
+            # 3. (Optional) Remove the original zip file after successful extraction
+            # os.remove(archive_path)
+
+    return DATA_DIR
 
 if __name__ == "__main__":
     # Ensure 'requests' is available if running this script directly

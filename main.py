@@ -6,12 +6,14 @@ import src.eval.main as eval
 # You can import from your 'src' folder because of the PYTHONPATH in the Dockerfile
 from src.data.dataset_loaders import TrainTestDataset, UnlearningPairDataset
 from data import create_csv, download_data
+from data.utils import load_training_config
+from src.eval.visualize import plot_dataset_stats
 
 import os
 import sys
 import torch
+import pandas as pd
 from torch.utils.data import DataLoader
-from torch.utils.data.dataset import Dataset
 from torch.nn import Module
 from clearml.automation.controller import PipelineDecorator
 
@@ -21,7 +23,6 @@ from src.eval.main import evaluate, compare_models, visualize_pipeline_results
 
 from pathlib import Path
 from typing import Dict, Any, Tuple
-import yaml
 
 # --- Define your Hyperparameters ---
 HYPERPARAMS = {
@@ -31,52 +32,19 @@ HYPERPARAMS = {
     "soft_targets": False,
 } # For now, this is just parked here; I don't know if I will need it in the end
 
-# Utility function to load architecture-specific config
-def load_training_config(architecture: str) -> Dict[str, Any]:
-    """Loads the training configuration based on the model architecture."""
-
-    # Determine the file path based on the architecture
-    arch = architecture.lower()
-    config_filename = f"{arch}.yaml"
-    config_path = os.path.join("configs", "training", config_filename)
-    
-    print(f"Attempting to load configuration for {architecture} from {config_path}...")
-    
-    try:
-        if not os.path.exists(os.path.dirname(config_path)):
-            os.makedirs(os.path.dirname(config_path), exist_ok=True)
-
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-            return config.get("training", {})
-            
-    except FileNotFoundError:
-        print(f"Warning: Configuration file not found at {config_path}. Using default hardcoded config.")
-    except Exception as e:
-        print(f"Warning: Failed to load config: {e}. Using default hardcoded config.")
-
-    # Default/Fallback Configuration
-    return {
-        "epochs": 10,
-        "batch_size": 64,
-        "learning_rate": 0.001,
-        "optimizer": "Adam",
-        "save_path": f"saves/{arch}_trained_model.pth"
-    }
-
 # --- Define your pipeline components ---
-@PipelineDecorator.component()
-def data_loading() -> Path:
+@PipelineDecorator.component(cache=True, return_values=["Data Path"])
+def data_loading() -> str:
     try:
         path = download_data.main()
     except Exception as e:
         print(f"\nFATAL ERROR during data download: {e}")
         sys.exit(1)
 
-    return path
+    return str(path)
 
-@PipelineDecorator.component()
-def data_preprocessing(args: Any, path: Path) -> Tuple[DataLoader, UnlearningPairDataset, DataLoader]:
+@PipelineDecorator.component(cache=True, return_values=["Train Dataloader", "Unlearning Dataset", "Retain Dataloader"])
+def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPairDataset, DataLoader]:
     """
         return: Tuple of: Train Dataloader, Test Dataloader, UnlearningPairDataset, Retain Dataloader
     """
@@ -86,6 +54,14 @@ def data_preprocessing(args: Any, path: Path) -> Tuple[DataLoader, UnlearningPai
         create_csv.main([args.dataset])
     else:
         print(f"CSV for {args.dataset} already exists")
+
+    # Plot infos about the dataset
+    # Firstly get the dataframe
+    try:
+        df = pd.read_csv(f"{path}/{args.dataset}_index.csv")
+        plot_dataset_stats(df, "f1_split")
+    except Exception as e:
+        print(f"Failed to plot dataset stats: {e}")
 
     # Load architecture-specific config to get the batch size
     temp_config = load_training_config(args.architecture)
@@ -104,7 +80,7 @@ def data_preprocessing(args: Any, path: Path) -> Tuple[DataLoader, UnlearningPai
 
     return train_dl, unlearn_ds, retain_dl
 
-@PipelineDecorator.component()
+@PipelineDecorator.component(cache=True, return_values=["Untrained Model"])
 def model_creation(architecute: str) -> Module:
     architecute = architecute.lower()
     print(f"Creating model with architecture: {architecute}")
@@ -116,7 +92,7 @@ def model_creation(architecute: str) -> Module:
     else:
         raise ValueError(f"Unknown architecture: {architecute}. Options are 'cnn' and 'mlp'.")
 
-@PipelineDecorator.component()
+@PipelineDecorator.component(cache=False, return_values=["Trained Model"])
 def training(train_loader: DataLoader, model: Module, architecture: str) -> Module:
     """
     Trains the provided model using the training data loader and architecture-specific configuration.
@@ -138,8 +114,8 @@ def training(train_loader: DataLoader, model: Module, architecture: str) -> Modu
     
     return trained_model
 
-@PipelineDecorator.component()
-def evaluation(model: Module, args: Any, path: Path) -> Dict[str, float]: 
+@PipelineDecorator.component(cache=False, return_values=["Evaluated Model"])
+def evaluation(model: Module, args: Any, path: str) -> Dict[str, float]: 
     """
     Evaluates the model on the test dataset. (Currently a placeholder)
     """
@@ -165,7 +141,7 @@ def evaluation(model: Module, args: Any, path: Path) -> Dict[str, float]:
 
     return result_dict
 
-@PipelineDecorator.component()
+@PipelineDecorator.component(cache=False, return_values=["Evaluation Model Parameter Difference"])
 def evaluation_difference(original_model: Module, unlearned_model: Module) -> Dict[str, float]:
     """
     Evaluates the quantitive parameter difference between the original and unlearned models.
@@ -175,7 +151,7 @@ def evaluation_difference(original_model: Module, unlearned_model: Module) -> Di
 
     return result_dict
 
-@PipelineDecorator.component()
+@PipelineDecorator.component(cache=False, return_values=["Soft Targets Unlearn Dataset"])
 def creating_soft_targets(model: Module, unlearn_ds: UnlearningPairDataset) -> UnlearningPairDataset:
     """
     Optional pipeline step to generate soft targets using the trained model.
@@ -192,7 +168,7 @@ def creating_soft_targets(model: Module, unlearn_ds: UnlearningPairDataset) -> U
         
     return unlearn_ds
 
-@PipelineDecorator.component()
+@PipelineDecorator.component(cache=False, return_values=["Unlearned Model"])
 def unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, mu_algo: str) -> Module:
     """
     Runs the specified machine unlearning algorithm on the trained model.
@@ -205,7 +181,7 @@ def unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, mu_algo
     # Delegate the heavy lifting to the run_unlearning function in the unlearn module
     return unlearn.run_unlearning(trained_model, unlearn_ds, mu_algo)
 
-@PipelineDecorator.component()
+@PipelineDecorator.component(cache=False)
 def plotter(
     trained_res: Dict[str, float],
     base_res: Dict[str, float],
@@ -217,43 +193,11 @@ def plotter(
     """
     visualize_pipeline_results(trained_res, base_res, unlearned_res, param_changes)
 
-def main():
+@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="1.1.1")
+def main(args: Any):
     """
     Main function to parse arguments and run the training/unlearning pipeline.
     """
-    parser = argparse.ArgumentParser(description="Run SoftTargets training and unlearning experiments.")
-    
-    # --- Define your command-line arguments ---
-    parser.add_argument(
-        "--dataset", 
-        type=str, 
-        default="mnist",  # This is the default value
-        help="The dataset to use (e.g., 'mnist', 'fashion_mnist')."
-    )
-    
-    parser.add_argument(
-        "--mu_algo", 
-        type=str, 
-        default="graddiff", # This is the default value
-        help="The machine unlearning algorithm to use (e.g., 'graddiff', 'rmu')."
-    )
-    
-    parser.add_argument(
-        "--architecture", 
-        type=str, 
-        default="cnn", # This is the default value
-        help="The model architecture to use (e.g., 'cnn', 'mlp')."
-    )
-
-    parser.add_argument(
-        "--softtargets",
-        action="store_true", # If flag is present, value is True. Default is False.
-        help="Whether to use soft targets (predicted probabilities) instead of hard labels for unlearning."
-    )
-
-    # --- Parse the arguments ---
-    # Parse the arguments provided from the command line
-    args = parser.parse_args()
 
     # --- Use the configurations in your script ---
     print("--- Starting Experiment ---")
@@ -309,4 +253,40 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run SoftTargets training and unlearning experiments.")
+    
+    # --- Define your command-line arguments ---
+    parser.add_argument(
+        "--dataset", 
+        type=str, 
+        default="mnist",  # This is the default value
+        help="The dataset to use (e.g., 'mnist', 'fashion_mnist')."
+    )
+    
+    parser.add_argument(
+        "--mu_algo", 
+        type=str, 
+        default="graddiff", # This is the default value
+        help="The machine unlearning algorithm to use (e.g., 'graddiff', 'rmu')."
+    )
+    
+    parser.add_argument(
+        "--architecture", 
+        type=str, 
+        default="cnn", # This is the default value
+        help="The model architecture to use (e.g., 'cnn', 'mlp')."
+    )
+
+    parser.add_argument(
+        "--softtargets",
+        action="store_true", # If flag is present, value is True. Default is False.
+        help="Whether to use soft targets (predicted probabilities) instead of hard labels for unlearning."
+    )
+
+    # --- Parse the arguments ---
+    # Parse the arguments provided from the command line
+    args = parser.parse_args()
+
+    # PipelineDecorator.set_default_execution_queue("default")
+    PipelineDecorator.run_locally()
+    main(args)
