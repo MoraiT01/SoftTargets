@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=4 # Number of CPUs
 #SBATCH --gres=gpu:nvidia_a100_80gb_pcie_3g.39gb:1  # Allocate 1/2 GPU resources with specified configurations
 #SBATCH --mem=50G  # Specify the total amount of memory
-#SBATCH --time=01:00:00  # Set a time limit for the job
+#SBATCH --time=25:00:00  # Set a time limit for the job
 #SBATCH --partition=advance
 #SBATCH --qos=advance
 #SBATCH --account=advance

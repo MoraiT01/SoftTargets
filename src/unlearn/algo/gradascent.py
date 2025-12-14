@@ -31,10 +31,10 @@ class GradientAscent(BaseUnlearningAlgorithm):
                 optimizer.zero_grad()
                 output = self.model(data)
                 
-                loss_f = self.criterion(output, target_indices)
+                loss_f = - self.criterion(output, target_indices)
                 
                 # Gradient Ascent: Minimize -Loss (or maximize Loss). We use -loss_f.backward()
-                (-loss_f).backward() 
+                loss_f.backward() 
                 optimizer.step()
                 total_loss += loss_f.item()
             

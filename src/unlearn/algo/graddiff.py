@@ -41,7 +41,7 @@ class GradientDifference(BaseUnlearningAlgorithm):
 
                 # --- Combined Loss (L_GD) ---
                 # Total Loss to MINIMIZE: (1-alpha) * L_R - alpha * L_F
-                combined_loss = (1 - alpha) * loss_r - alpha * loss_f
+                combined_loss = alpha * loss_r - loss_f
 
                 optimizer.zero_grad()
                 combined_loss.backward()

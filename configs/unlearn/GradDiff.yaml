@@ -6,4 +6,4 @@ unlearning:
   learning_rate: 0.00001
   optimizer: SGD        # Should be ADAM in the next version
   momentum: 0.9
-  alpha: 0.5            # Weighting factor between retain (1-alpha) and forget (-alpha) loss
+  alpha: 1.0            # Weighting factor between retain (1-alpha) and forget (-alpha) loss

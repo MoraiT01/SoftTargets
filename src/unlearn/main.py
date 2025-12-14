@@ -3,8 +3,7 @@ from torch.nn import Module
 from typing import Dict, Any, Union
 import yaml
 import os
-
-# Import the custom classes and DataLoader from your project
+import time
 from src.unlearn.algo import gradascent, graddiff
 from src.data.dataset_loaders import UnlearningPairDataset, UnlearningDataLoader 
 from clearml import Task
@@ -34,7 +33,7 @@ def load_unlearning_config(algorithm: str) -> Dict[str, Any]:
     except FileNotFoundError:
         print(f"Warning: Configuration file not found at {config_path}. Using default hardcoded config.")
     except Exception as e:
-        print(f"Warning: Failed to load config: {e}. Using default hardcoded config.")
+        print(f"Warning: Failed to load config: {e}. Using default.")
 
     # Default/Fallback Configuration
     if alg_name == "gradasc":
@@ -51,12 +50,10 @@ def run_unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, alg
     alg_name_lower = algorithm_name.lower()
     
     if alg_name_lower not in ALGORITHM_MAP:
-        raise ValueError(f"Unknown unlearning algorithm: {algorithm_name}. Options are {list(ALGORITHM_MAP.keys())}")
+        raise ValueError(f"Unknown algorithm: {algorithm_name}")
 
     # Load configuration
     config = load_unlearning_config(algorithm_name)
-    
-    # Instantiate DataLoader for unlearning (using the custom paired DataLoader)
     batch_size = config.get('batch_size', 64) 
     unlearn_dl = UnlearningDataLoader(unlearn_ds, batch_size=batch_size, shuffle=True)
     
@@ -69,27 +66,31 @@ def run_unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, alg
     # Run the unlearning process
     unlearned_model = unlearning_alg.unlearn(unlearn_dl)
     
-    # --- SAVE ONLY TO CLEARML ---
+    # --- SAVE AND UPLOAD ---
+    # Fix for Cause 2: Explicit filename, do not rely on previous model path
     filename = f"{alg_name_lower}_unlearned.pth"
     save_path = f"saves/{filename}"
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     
-    # 1. Save locally temporarily
+    # 1. Save locally
     torch.save(unlearned_model.state_dict(), save_path)
     
     # 2. Upload to ClearML
     task = Task.current_task()
     if task:
         print(f"Uploading {filename} to ClearML...")
-        task.upload_artifact(name="Unlearned Model", artifact_object=save_path)
+        # wait=True ensures upload finishes before we proceed
+        task.upload_artifact(name="Unlearned Model", artifact_object=save_path, wait=True)
         
-        # 3. Remove local file to save space
-        try:
-            os.remove(save_path)
-            print(f"Local file {save_path} removed.")
-        except OSError as e:
-            print(f"Error removing local file: {e}")
+        # 3. Remove local file
+        for i in range(5):
+            try:
+                os.remove(save_path)
+                print(f"Local file {save_path} removed.")
+                break
+            except OSError as e:
+                print(f"Attempt {i+1}/5: Could not remove file ({e}). Retrying in 1s...")
+                time.sleep(1)
             
-    unlearned_model.set_path(save_path) # Keep path for reference in code, even if file is gone
-    
+    unlearned_model.set_path(save_path) 
     return unlearned_model
