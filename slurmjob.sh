@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=posthoc # specify the job name for monitoring
+#SBATCH --job-name=softtargets # specify the job name for monitoring
 #SBATCH --output=transformer-out/softtargets_JOB_%j.out # specify the output file
 #SBATCH --error=transformer-err/softtargets_JOB_%j.err # specify the error file
 #SBATCH --nodes=1 # As we have single node it should be always set as 1
