@@ -25,7 +25,7 @@ from typing import Dict, Any, Tuple
 # --- Define your Hyperparameters ---
 HYPERPARAMS = {
     "dataset": "mnist",
-    "mu_algo": "grad_ascent",
+    "mu_algo": "gradasc",
     "architecture": "mlp",
     "soft_targets": False,
 } # For now, this is just parked here; I don't know if I will need it in the end
@@ -200,8 +200,8 @@ def main(args: Any):
     # checking if the hyperparameters are supported
     if args.architecture not in ["cnn", "mlp"]:
         raise ValueError(f"Unsupported architecture: {args.architecture}. Options are 'cnn' and 'mlp'.")
-    if args.mu_algo not in ["grad_ascent", "graddiff"]:
-        raise ValueError(f"Unsupported machine unlearning algorithm: {args.mu_algo}. Options are 'grad_ascent' and 'graddiff'.")
+    if args.mu_algo not in ["gradasc", "graddiff"]:
+        raise ValueError(f"Unsupported machine unlearning algorithm: {args.mu_algo}. Options are 'gradasc' and 'graddiff'.")
     if args.dataset not in ["mnist", "fashion_mnist"]:
         raise ValueError(f"Unsupported dataset: {args.dataset}. Options are 'mnist' and 'fashion_mnist'.")
     

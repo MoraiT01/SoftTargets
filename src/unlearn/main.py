@@ -4,13 +4,13 @@ from typing import Dict, Any, Union
 import yaml
 import os
 import time
-from src.unlearn.algo import gradascent, graddiff
+from src.unlearn.algo import gradasc, graddiff
 from src.data.dataset_loaders import UnlearningPairDataset, UnlearningDataLoader 
 from clearml import Task
 
 # Define a mapping from algorithm name to its class
 ALGORITHM_MAP = {
-    "gradasc": gradascent.GradientAscent,
+    "gradasc": gradasc.GradientAscent,
     "graddiff": graddiff.GradientDifference,
 }
 

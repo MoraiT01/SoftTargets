@@ -73,13 +73,13 @@ python -c "import torch; print(torch.cuda.is_available())"
 # The pipeline can be run multiple times
 # Hyperparameters are:
 # - dataset: mnist, fashion_mnist
-# - mu_algo: grad_ascent, graddiff
+# - mu_algo: gradasc, graddiff
 # - architecture: mlp, cnn
 # - softtargets
-# Example Call: python main.py --dataset mnist --mu_algo grad_ascent --architecture mlp --softtargets
+# Example Call: python main.py --dataset mnist --mu_algo gradasc --architecture mlp --softtargets
 
 DATASET="mnist"
-MU_ALGO="grad_ascent"
+MU_ALGO="gradasc"
 ARCHITECTURE="mlp"
 SOFTTARGETS=false 
 
