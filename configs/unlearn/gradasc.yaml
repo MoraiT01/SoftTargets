@@ -2,7 +2,7 @@
 
 unlearning:
   epochs: 10
-  batch_size: 8         # Should be the same as training batch size for consistency
+  batch_size: 32         # Should be the same as training batch size for consistency
   learning_rate: 0.00001
   optimizer: SGD        # Should be ADAM in the next version
   momentum: 0.9         # Common for SGD-based methods
