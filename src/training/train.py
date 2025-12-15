@@ -3,8 +3,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.nn import Module
-from typing import Dict, Any
-import os
+from typing import Dict, Any, Optional
+from clearml import Task
+from src.eval.metrics import evaluate_loader
 
 # --- Core Training Function ---
 
@@ -28,10 +29,10 @@ def train_epoch(model: Module, data_loader: DataLoader, optimizer: optim.Optimiz
         running_loss += loss.item()
         
     avg_loss = running_loss / len(data_loader)
-    print(f"  | Epoch Loss: {avg_loss:.4f}")
+    # print(f"  | Epoch Loss: {avg_loss:.4f}") # Handled by main loop now
     return avg_loss
 
-def train_model(model: Module, train_loader: DataLoader, config: Dict[str, Any]) -> Module:
+def train_model(model: Module, train_loader: DataLoader, config: Dict[str, Any], test_loader: Optional[DataLoader] = None) -> Module:
     """
     Main function to train the model and save the final checkpoint.
     
@@ -64,22 +65,32 @@ def train_model(model: Module, train_loader: DataLoader, config: Dict[str, Any])
     # Use NLLLoss because your models output log_softmax
     criterion = nn.NLLLoss()
     
+    # Get ClearML Logger
+    logger = None
+    task = Task.current_task()
+    if task:
+        logger = task.get_logger()
+    
     # 3. Training Loop
     num_epochs = config.get("epochs", 10)
     print(f"Starting training for {num_epochs} epochs...")
     
     for epoch in range(1, num_epochs + 1):
         print(f"--- Epoch {epoch}/{num_epochs} ---")
-        train_epoch(model, train_loader, optimizer, criterion, device)
+        train_loss = train_epoch(model, train_loader, optimizer, criterion, device)
         
-    # 4. Save the model
-    # save_path = config.get("save_path", "saves/trained_model.pth")
-    # os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    
-    # # Save the model state dictionary
-    # torch.save(model.state_dict(), save_path)
-    # # Set the path attribute on the model (defined in your CNN/MLP classes)
-    # model.set_path(save_path)
-    # print(f"\nModel saved to: {save_path}")
+        print(f"  | Training Loss: {train_loss:.4f}")
+        
+        # Log Training Loss
+        if logger:
+            logger.report_scalar(title="Training", series="Loss", value=train_loss, iteration=epoch)
+
+        # Evaluate on Test Data if provided
+        if test_loader:
+            test_loss, test_acc = evaluate_loader(model, test_loader, device)
+            print(f"  | Test Loss: {test_loss:.4f} | Test Acc: {test_acc:.4f}")
+            if logger:
+                logger.report_scalar(title="Training", series="Test Loss", value=test_loss, iteration=epoch)
+                logger.report_scalar(title="Training", series="Test Accuracy", value=test_acc, iteration=epoch)
     
     return model
