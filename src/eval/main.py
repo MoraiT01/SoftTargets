@@ -41,18 +41,16 @@ def evaluate(model: Module, dataloaders: Dict[Any, DataLoader]) -> Dict[str, flo
     task = Task.current_task()
     if task:
         logger = task.get_logger()
-        # Log every metric in the results dictionary
-        for metric_name, value in results.items():
-            # We split the name to categorize it nicely in the UI (e.g., Accuracy/class_0)
+        
+        # only log the mean metrics for simplicity
+        for metric_name in ["mean_loss", "mean_accuracy"]:
             if "accuracy" in metric_name:
-                series = metric_name.replace("_accuracy", "")
-                logger.report_scalar(title="Accuracy", series=series, value=value, iteration=0)
+                logger.report_single_value(name="Average Accuracy", value=results["mean_accuracy"])
             elif "loss" in metric_name:
-                series = metric_name.replace("_loss", "")
-                logger.report_scalar(title="Loss", series=series, value=value, iteration=0)
+                logger.report_single_value(name="Averge Loss", value=results["mean_loss"])
             else:
-                logger.report_scalar(title="Metrics", series=metric_name, value=value, iteration=0)
-    # ---------------------------
+                logger.report_single_value(name=metric_name, value=results[metric_name])
+        # ---------------------------
 
     return results
 
@@ -70,11 +68,8 @@ def compare_models(model_orig: Module, model_unlearned: Module) -> Dict[str, flo
     # --- CLEARML INTEGRATION ---
     task = Task.current_task()
     if task:
-        task.get_logger().report_scalar(
-            title="Model_Diff", 
-            series="parameter_change", 
-            value=avg_diff, 
-            iteration=0
+        task.get_logger().report_single_value(
+            name="Average Parameter Change", value=avg_diff
         )
     # ---------------------------
     

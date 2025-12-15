@@ -89,9 +89,9 @@ def plot_parameter_changes(param_changes: Dict[str, float]):
         xaxis_title="Comparison",
         yaxis_title="Avg Abs Difference",
     )
+    
     eval_task = Task.current_task()
-
-    eval_task.get_logger().report_scalar(title="Parameter Change", series="parameter_change", value=param_changes['avg_parameter_change'])
+    eval_task.get_logger().report_plotly(title="Parameter Changes", series="parameter_changes", figure=fig)
 
 def plot_dataset_stats(df: pd.DataFrame, forget_col: str = "f1_split") -> None:
     """
