@@ -83,7 +83,7 @@ MU_ALGO="gradasc"
 ARCHITECTURE="mlp"
 SOFTTARGETS=false 
 
-for (( i=1; i<=5; i++ ))
+for (( i=1; i<=30; i++ ))
 do
   echo "Running iteration: $i"
 
@@ -93,3 +93,6 @@ do
     python main.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE
   fi
 done
+
+### Final Aggregation Step ###
+python src/eval/aggregate_results.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE --softtargets $SOFTTARGETS

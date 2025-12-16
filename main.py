@@ -19,7 +19,8 @@ from clearml.automation.controller import PipelineDecorator
 
 from src.training.models.cnn import CNN
 from src.training.models.mlp import TwoLayerPerceptron
-from src.eval.main import compare_models, visualize_pipeline_results
+from src.eval.main import compare_models, visualize_pipeline_results, final_metrics_summary
+from src.eval.aggregate_results import aggregate_runs
 
 from typing import Dict, Any, Tuple
 
@@ -182,11 +183,19 @@ def plotter(
     base_res: Dict[str, float],
     unlearned_res: Dict[str, float],
     param_changes:Dict[str, float],
+    args: Any,
     ):  
     """
     Calls the visualization module to generate and display/save visualizations.
     """
+    # Reduce the results to 2 metrics
+    # - Average Accuracy Distance to Baseline
+    # - Average Change in Parameters
+    avg_acc_diff, avg_param_change = final_metrics_summary(trained_res, base_res, unlearned_res, param_changes)
+    # Visualization
     visualize_pipeline_results(trained_res, base_res, unlearned_res, param_changes)
+
+    aggregate_runs(args, [avg_acc_diff], [avg_param_change])
 
 @PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="2.0.1")
 def main(args: Any):

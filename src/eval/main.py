@@ -3,7 +3,7 @@ from typing import Dict, Any
 from torch.nn import Module
 from torch.utils.data import DataLoader
 
-from typing import Optional
+from typing import Optional, Tuple
 
 # Import the metric calculation functions
 from data.utils import load_training_config
@@ -117,3 +117,21 @@ def evaluation(model: Module, args: Any, path: str) -> Dict[str, float]:
     result_dict = evaluate(model, cls_dl)
 
     return result_dict
+
+def final_metrics_summary(
+    trained_res: Dict[str, float],
+    base_res: Dict[str, float],
+    unlearned_res: Dict[str, float],
+    param_changes: Optional[Dict[str, float]], 
+) -> Tuple[float, float]:
+    """
+    Summarizes the final metrics from the pipeline and logs them to ClearML.
+    """
+    task = Task.current_task()
+
+    acc_d = metrics.accuracy_distance(base_res, unlearned_res, metric="accuracy")
+
+    task.get_logger().report_single_value("Accuracy Distance", value=acc_d)
+    task.get_logger().report_single_value("Average Parameter Change", value=param_changes["avg_parameter_change"])
+
+    return acc_d, param_changes["avg_parameter_change"]

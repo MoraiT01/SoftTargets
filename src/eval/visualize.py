@@ -1,8 +1,9 @@
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import numpy as np
+from scipy.stats import norm
 import re
 import pandas as pd
-from typing import Dict, Optional, Literal
+from typing import Dict, Optional, Literal, List
 
 from clearml import Task
 
@@ -154,6 +155,68 @@ def plot_dataset_stats(df: pd.DataFrame, forget_col: str = "f1_split") -> None:
         template="plotly_white"
     )
     eval_task.get_logger().report_plotly(title="Dataset Composition", series="dataset_composition", figure=fig_pie)
+
+def plot_distributions(accuracies: List[float], param_changes: List[float], context_title: str):
+    """
+    Calculates mean and variance for accuracies and parameter changes,
+    fits a normal distribution, and plots the results.
+    """
+    print(f"\n--- Generating Distribution Plots for 30 runs ({context_title}) ---")
+    eval_task = Task.current_task()
+    logger = eval_task.get_logger() if eval_task else None
+
+    # Helper to create a distribution plot
+    def create_dist_plot(data, title, xlabel, color):
+        if not data:
+            return None
+            
+        # 1. Calculate Statistics
+        mu, std = norm.fit(data)
+        
+        # 2. Generate PDF points
+        x_min, x_max = min(data), max(data)
+        # Add some padding to the range
+        padding = (x_max - x_min) * 0.2 if x_max != x_min else 0.01
+        x_axis = np.linspace(x_min - padding, x_max + padding, 100)
+        y_axis = norm.pdf(x_axis, mu, std)
+        
+        fig = go.Figure()
+        
+        # Histogram of actual data
+        fig.add_trace(go.Histogram(
+            x=data,
+            histnorm='probability density',
+            name='Run Data',
+            marker_color=color,
+            opacity=0.6
+        ))
+        
+        # Normal Distribution Line
+        fig.add_trace(go.Scatter(
+            x=x_axis,
+            y=y_axis,
+            mode='lines',
+            name=f'Normal Dist (μ={mu:.4f}, σ={std:.4f})',
+            line=dict(color='black', width=2)
+        ))
+        
+        fig.update_layout(
+            title=f"{title} (Over 30 Runs)",
+            xaxis_title=xlabel,
+            yaxis_title="Probability Density",
+            template="plotly_white"
+        )
+        return fig
+
+    # --- Plot 1: Accuracy Distribution ---
+    fig_acc = create_dist_plot(accuracies, f"Accuracy Distribution - {context_title}", "Accuracy", "green")
+    if fig_acc and logger:
+        logger.report_plotly(title="Distribution Analysis", series="Accuracy Distribution", figure=fig_acc)
+        
+    # --- Plot 2: Parameter Change Distribution ---
+    fig_param = create_dist_plot(param_changes, f"Parameter Change Distribution - {context_title}", "Avg Parameter Difference", "orange")
+    if fig_param and logger:
+        logger.report_plotly(title="Distribution Analysis", series="Param Change Distribution", figure=fig_param)
 
 def visualize_all(
     trained_metrics: Dict[str, float], 

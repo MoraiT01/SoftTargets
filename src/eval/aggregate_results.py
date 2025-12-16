@@ -1,84 +1,79 @@
 import argparse
-import numpy as np
-import pandas as pd
-from clearml import Task
-import plotly.graph_objects as go
+import os
+import json
+from typing import Any, List
+try:
+    from src.eval.visualize import plot_distributions
+except ImportError:
+    from visualize import plot_distributions
 
-def aggregate_runs(project_name, dataset, mu_algo, architecture, softtargets):
-    print(f"Searching for tasks in project '{project_name}'...")
-    print(f"Filters: Dataset={dataset}, Algo={mu_algo}, Arch={architecture}, SoftTargets={softtargets}")
-
-    # 1. Search for Evaluation Tasks
-    # The 'evaluation' function in the pipeline runs as a separate Task named "evaluation".
-    # It receives the 'args' object which contains our hyperparameters.
+def aggregate_runs(
+        args: Any,
+        accuracies: List[float] = None, 
+        param_changes: List[float] = None,
+        json_file_path: str = "experiment_results.json", 
+        target_runs: int = 30):
     
-    # Note: Boolean values in ClearML args usually appear as "True"/"False" strings
-    st_val = "True" if softtargets else "False"
+    # 2. JSON Logging Logic
+    json_file_path = "experiment_results.json"
+    
+    # Initialize data structure
+    if os.path.exists(json_file_path):
+        try:
+            with open(json_file_path, 'r') as f:
+                data = json.load(f)
+        except json.JSONDecodeError:
+            data = {}
+    else:
+        data = {}
 
-    tasks = Task.get_tasks(
-        project_name=project_name,
-        task_name="evaluation", # The name of the pipeline component
-        task_filter={
-            "status": ["completed"],
-            # Filter by the arguments passed to the evaluation component
-            "hyperparams.Args.dataset.value": dataset,
-            "hyperparams.Args.mu_algo.value": mu_algo,
-            "hyperparams.Args.architecture.value": architecture,
-            "hyperparams.Args.softtargets.value": st_val
+    # Define keys for nested structure
+    arch = args.architecture
+    algo = args.mu_algo
+    dset = args.dataset
+    st_key = f"softtargets_{args.softtargets}"
+    
+    # Ensure structure exists
+    if arch not in data: data[arch] = {}
+    if algo not in data[arch]: data[arch][algo] = {}
+    if dset not in data[arch][algo]: data[arch][algo][dset] = {}
+    if st_key not in data[arch][algo][dset]: 
+        data[arch][algo][dset][st_key] = {
+            "accuracies": [], 
+            "param_changes": []
         }
-    )
 
-    if not tasks:
-        print("No matching tasks found.")
-        return
-
-    print(f"Found {len(tasks)} matching evaluation runs.")
-    if len(tasks) < 30:
-        print(f"Warning: You have fewer than 30 runs ({len(tasks)}). Statistics might not be robust.")
-
-    # 2. Extract Metrics
-    # We will collect 'Accuracy' and 'Loss' scalars
-    aggregated_data = {
-        "mean_accuracy": [],
-        "mean_loss": [],
-        # You can add per-class metrics here if needed
-    }
-
-    print("Fetching scalar metrics from server...")
-    for t in tasks:
-        # get_reported_scalars() returns a dict structure: {Title: {Series: {x:[], y:[]}}}
-        scalars = t.get_reported_scalars()
+    target_entry = data[arch][algo][dset][st_key]
+    if accuracies is not None and param_changes is not None:
+        # Append new results
         
-        if scalars and 'Accuracy' in scalars and 'mean_accuracy' in scalars['Accuracy']:
-            # Get the last value reported (y-axis)
-            acc = scalars['Accuracy']['mean_accuracy']['y'][-1]
-            aggregated_data["mean_accuracy"].append(acc)
-            
-        if scalars and 'Loss' in scalars and 'mean_loss' in scalars['Loss']:
-            loss = scalars['Loss']['mean_loss']['y'][-1]
-            aggregated_data["mean_loss"].append(loss)
+        target_entry["accuracies"].extend(accuracies)
+        target_entry["param_changes"].extend(param_changes)
+        
+    # Save back to file
+    with open(json_file_path, 'w') as f:
+        json.dump(data, f, indent=4)
+        
+    print(f"Logged results to {json_file_path}. Total runs for this config: {len(target_entry['accuracies'])}")
 
-    # 3. Calculate Statistics
-    results_df = pd.DataFrame(aggregated_data)
-    
-    print("\n--- Aggregated Results ---")
-    stats = results_df.describe().loc[['mean', 'std', 'min', 'max']]
-    print(stats)
-    
-    # 4. Visualization (Optional: Box Plot)
-    fig = go.Figure()
-    fig.add_trace(go.Box(y=results_df['mean_accuracy'], name="Mean Accuracy"))
-    fig.update_layout(title=f"Accuracy Distribution over {len(tasks)} runs")
-    fig.show()
+    # 3. Check for 30 runs to trigger Distribution Analysis
+    if len(target_entry["accuracies"]) == target_runs:
+        print(">>> 30 runs reached! Executing Distribution Analysis Task... <<<")
+        
+        context_title = f"{arch}_{algo}_{dset}_{st_key}"
+        plot_distributions(
+            accuracies=target_entry["accuracies"], 
+            param_changes=target_entry["param_changes"],
+            context_title=context_title
+        )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="mnist")
-    parser.add_argument("--mu_algo", type=str, default="graddiff")
-    parser.add_argument("--architecture", type=str, default="cnn")
+    parser.add_argument("--mu_algo", type=str, default="gradasc")
+    parser.add_argument("--architecture", type=str, default="mlp")
     parser.add_argument("--softtargets", action="store_true")
-    parser.add_argument("--project", type=str, default="softtargets")
     
     args = parser.parse_args()
     
-    aggregate_runs(args.project, args.dataset, args.mu_algo, args.architecture, args.softtargets)
+    aggregate_runs(args)
