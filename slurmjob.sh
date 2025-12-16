@@ -78,12 +78,12 @@ python -c "import torch; print(torch.cuda.is_available())"
 # - softtargets
 # Example Call: python main.py --dataset mnist --mu_algo gradasc --architecture mlp --softtargets
 
-DATASET="mnist"
-MU_ALGO="gradasc"
+DATASET="fashion_mnist"
+MU_ALGO="graddiff"
 ARCHITECTURE="mlp"
 SOFTTARGETS=false 
 
-for (( i=1; i<=30; i++ ))
+for (( i=1; i<=1; i++ ))
 do
   echo "Running iteration: $i"
 

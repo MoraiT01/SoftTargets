@@ -1,9 +1,9 @@
 # configs/unlearning/graddiff.yaml
 
 unlearning:
-  epochs: 10
+  epochs: 5
   batch_size: 32         # Should be the same as training batch size for consistency
-  learning_rate: 0.0001
+  learning_rate: 0.00005
   optimizer: SGD        # Should be ADAM in the next version
   momentum: 0.9
-  alpha: 0.8            # Weighting factor between retain and forget losos: L_retain * alpha - L_forget
+  alpha: 1.0            # Weighting factor between retain and forget losos: L_retain * alpha - L_forget
