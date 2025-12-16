@@ -164,13 +164,13 @@ def creating_soft_targets(model: Module, unlearn_ds: UnlearningPairDataset) -> U
     return unlearn_ds
 
 @PipelineDecorator.component(cache=False, name="Unlearning", return_values=["Unlearned Model", "Evaluation Results"])
-def unlearning(target_model: Module, unlearn_ds: UnlearningPairDataset, mu_algo: str, test_loader: DataLoader) -> Module:
+def unlearning(target_model: Module, unlearn_ds: UnlearningPairDataset, test_loader: DataLoader, args: Any) -> Module:
     """
     Runs the specified machine unlearning algorithm on the trained model.
     """
     # Delegate the heavy lifting to the run_unlearning function in the unlearn module
     # Passing test_loader for monitoring
-    unlearned_model =  unlearn.run_unlearning(target_model, unlearn_ds, mu_algo, test_loader=test_loader)
+    unlearned_model =  unlearn.run_unlearning(target_model, unlearn_ds, args.architecture, test_loader=test_loader)
 
     evaluation_results = evaluation(unlearned_model, args=args, path=test_loader.dataset.csv_file)
     
@@ -230,7 +230,7 @@ def main(args: Any):
         unlearn_ds = creating_soft_targets(trained_model, unlearn_ds)
 
     # 4. Unlearn the model
-    unlearned_model, unlearned_evaluation_results = unlearning(trained_model, unlearn_ds, args.mu_algo, test_dl)
+    unlearned_model, unlearned_evaluation_results = unlearning(trained_model, unlearn_ds, test_dl, args)
 
     # 6. Evaluate differences between models
     difference = evaluation_difference(original_model=trained_model, unlearned_model=unlearned_model)
