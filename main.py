@@ -7,6 +7,7 @@ from src.data.dataset_loaders import TrainTestDataset, UnlearningPairDataset
 from data import create_csv, download_data
 from data.utils import load_training_config
 from src.eval.visualize import plot_dataset_stats
+from src.eval.main import evaluation
 
 import os
 import sys
@@ -18,7 +19,8 @@ from clearml.automation.controller import PipelineDecorator
 
 from src.training.models.cnn import CNN
 from src.training.models.mlp import TwoLayerPerceptron
-from src.eval.main import evaluate, compare_models, visualize_pipeline_results
+from src.eval.main import compare_models, visualize_pipeline_results, final_metrics_summary
+from src.eval.aggregate_results import aggregate_runs
 
 from typing import Dict, Any, Tuple
 
@@ -28,10 +30,10 @@ HYPERPARAMS = {
     "mu_algo": "gradasc",
     "architecture": "mlp",
     "soft_targets": False,
-} # For now, this is just parked here; I don't know if I will need it in the end
+}
 
 # --- Define your pipeline components ---
-@PipelineDecorator.component(cache=True, return_values=["Data Path"])
+@PipelineDecorator.component(cache=True, name="Download Data", return_values=["Data Path"])
 def data_loading() -> str:
     try:
         path = download_data.main()
@@ -41,10 +43,10 @@ def data_loading() -> str:
 
     return str(path)
 
-@PipelineDecorator.component(cache=True, return_values=["Train Dataloader", "Unlearning Dataset", "Retain Dataloader"])
-def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPairDataset, DataLoader]:
+@PipelineDecorator.component(cache=True, name="Preprocess Data", return_values=["Train Dataloader", "Unlearning Dataset", "Retain Dataloader", "Test Dataloader"])
+def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPairDataset, DataLoader, DataLoader]:
     """
-        return: Tuple of: Train Dataloader, Test Dataloader, UnlearningPairDataset, Retain Dataloader
+        return: Tuple of: Train Dataloader, UnlearningPairDataset, Retain Dataloader, Test Dataloader
     """
     # no need to create csv if it already exists
     if not os.path.exists(f"{path}/{args.dataset}_index.csv"):
@@ -54,7 +56,6 @@ def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPair
         print(f"CSV for {args.dataset} already exists")
 
     # Plot infos about the dataset
-    # Firstly get the dataframe
     try:
         df = pd.read_csv(f"{path}/{args.dataset}_index.csv")
         plot_dataset_stats(df, "f1_split")
@@ -67,8 +68,6 @@ def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPair
     
     # Instantiate the Train Dataset
     train_ds    = TrainTestDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="train") 
-    
-    # Create the training DataLoader
     train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     
     unlearn_ds  = UnlearningPairDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="train")
@@ -76,122 +75,129 @@ def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPair
     retain_ds   = TrainTestDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="train", sample_mode="retain")
     retain_dl   = DataLoader(retain_ds, batch_size=batch_size, shuffle=True)
 
-    return train_dl, unlearn_ds, retain_dl
+    # Instantiate the Test Dataset
+    test_ds = TrainTestDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="test")
+    test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
 
-@PipelineDecorator.component(cache=True, return_values=["Untrained Model"])
+    return train_dl, unlearn_ds, retain_dl, test_dl
+
+@PipelineDecorator.component(cache=True, name="Create Startpoint", return_values=["Untrained Model"])
 def model_creation(architecute: str) -> Module:
     architecute = architecute.lower()
     print(f"Creating model with architecture: {architecute}")
 
     if architecute == "cnn":
-        return CNN() #
+        return CNN() 
     elif architecute == "mlp":
-        return TwoLayerPerceptron() #
+        return TwoLayerPerceptron() 
     else:
         raise ValueError(f"Unknown architecture: {architecute}. Options are 'cnn' and 'mlp'.")
 
-@PipelineDecorator.component(cache=False, return_values=["Trained Model"])
-def training(train_loader: DataLoader, model: Module, architecture: str) -> Module:
+@PipelineDecorator.component(cache=False, name = "Train Baseline", return_values=["Baseline Model", "Evaluation Results"])
+def training_base(train_loader: DataLoader, model: Module, test_loader: DataLoader, args: Any) -> Tuple[Module, Dict[str, float]]:
     """
     Trains the provided model using the training data loader and architecture-specific configuration.
     """
     # Load architecture-specific training configuration
-    train_config = load_training_config(architecture)
+    train_config = load_training_config(args.architecture)
     
     if model is None:
         raise ValueError("Model object is missing.")
     
-    print(f"Starting training for {architecture} with config: {train_config}")
+    print(f"Starting training for {args.architecture} with config: {train_config}")
     
     # Call the main training function from the 'train' module
-    trained_model = train.train_model(
+    # Passing test_loader to enable progress monitoring
+    baseline_model = train.train_model(
         model=model, 
         train_loader=train_loader, 
-        config=train_config
+        config=train_config,
+        test_loader=test_loader 
     )
-    
-    return trained_model
 
-@PipelineDecorator.component(cache=False, return_values=["Evaluated Model"])
-def evaluation(model: Module, args: Any, path: str) -> Dict[str, float]: 
+    evaluation_results = evaluation(baseline_model, args=args, path=test_loader.dataset.csv_file)
+    
+    return baseline_model, evaluation_results
+
+@PipelineDecorator.component(cache=False, name = "Train Target", return_values=["Trained Target Model", "Evaluation Results"])
+def training_target(train_loader: DataLoader, model: Module, test_loader: DataLoader, args: Any) -> Tuple[Module, Dict[str, float]]:
     """
-    Evaluates the model on the test dataset. (Currently a placeholder)
+    Trains the provided model using the training data loader and architecture-specific configuration.
     """
+    # Load architecture-specific training configuration
+    train_config = load_training_config(args.architecture)
     
-    # Load architecture-specific config to get the batch size
-    temp_config = load_training_config(args.architecture)
-    batch_size = temp_config.get('batch_size', 64)
-    # NOTE: The loop over the range, similating the number of classes, will remain hard coded for now
-    cls_dl = {
-        i: DataLoader(
-            dataset=TrainTestDataset(
-                    csv_file=f"{path}/{args.dataset}_index.csv",
-                    root_dir=".",
-                    split="train",
-                    classes=[str(i)]
-                ),
-            batch_size=batch_size,
-            shuffle=False,
-            ) for i in range(10)
-        }
+    if model is None:
+        raise ValueError("Model object is missing.")
+
+    print(f"Starting training for {args.architecture} with config: {train_config}")
     
-    result_dict = evaluate(model, cls_dl)
+    # Call the main training function from the 'train' module
+    # Passing test_loader to enable progress monitoring
+    target_model = train.train_model(
+        model=model, 
+        train_loader=train_loader, 
+        config=train_config,
+        test_loader=test_loader 
+    )
 
-    return result_dict
+    evaluation_results = evaluation(target_model, args=args, path=test_loader.dataset.csv_file)
+    
+    return target_model, evaluation_results
 
-@PipelineDecorator.component(cache=False, return_values=["Evaluation Model Parameter Difference"])
+@PipelineDecorator.component(cache=False, name="Parameter Difference", return_values=["Evaluation Model Parameter Difference"])
 def evaluation_difference(original_model: Module, unlearned_model: Module) -> Dict[str, float]:
     """
     Evaluates the quantitive parameter difference between the original and unlearned models.
     """
-
     result_dict = compare_models(original_model, unlearned_model)
-
     return result_dict
 
-@PipelineDecorator.component(cache=False, return_values=["Soft Targets Unlearn Dataset"])
+@PipelineDecorator.component(cache=False, name="Create Soft Targets", return_values=["Soft Targets Unlearn Dataset"])
 def creating_soft_targets(model: Module, unlearn_ds: UnlearningPairDataset) -> UnlearningPairDataset:
     """
     Optional pipeline step to generate soft targets using the trained model.
     """
-    
     print("Generating Soft Targets (Predicted Probabilities) for the Unlearning Dataset...")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # Ensure model is on the correct device
     model.to(device)
-    
-    # Call the dataset method to populate soft targets
     unlearn_ds.make_softtargets(model, device)
-        
     return unlearn_ds
 
-@PipelineDecorator.component(cache=False, return_values=["Unlearned Model"])
-def unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, mu_algo: str) -> Module:
+@PipelineDecorator.component(cache=False, name="Unlearning", return_values=["Unlearned Model", "Evaluation Results"])
+def unlearning(target_model: Module, unlearn_ds: UnlearningPairDataset, test_loader: DataLoader, args: Any) -> Module:
     """
     Runs the specified machine unlearning algorithm on the trained model.
-    
-    Args:
-        trained_model: The pre-trained model.
-        unlearn_ds: The UnlearningPairDataset containing forget and retain data.
-        mu_algo: The name of the unlearning algorithm (e.g., 'graddiff').
     """
     # Delegate the heavy lifting to the run_unlearning function in the unlearn module
-    return unlearn.run_unlearning(trained_model, unlearn_ds, mu_algo)
+    # Passing test_loader for monitoring
+    unlearned_model =  unlearn.run_unlearning(target_model, unlearn_ds, args.mu_algo, test_loader=test_loader)
 
-@PipelineDecorator.component(cache=False)
+    evaluation_results = evaluation(unlearned_model, args=args, path=test_loader.dataset.csv_file)
+    
+    return unlearned_model, evaluation_results
+
+@PipelineDecorator.component(cache=False, name="Plotter")
 def plotter(
     trained_res: Dict[str, float],
     base_res: Dict[str, float],
     unlearned_res: Dict[str, float],
     param_changes:Dict[str, float],
+    args: Any,
     ):  
     """
-        Calls the visualization module to generate and display/save visualizations.
+    Calls the visualization module to generate and display/save visualizations.
     """
+    # Reduce the results to 2 metrics
+    # - Average Accuracy Distance to Baseline
+    # - Average Change in Parameters
+    avg_acc_diff, avg_param_change = final_metrics_summary(trained_res, base_res, unlearned_res, param_changes)
+    # Visualization
     visualize_pipeline_results(trained_res, base_res, unlearned_res, param_changes)
 
-@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="1.3.2")
+    aggregate_runs(args, [avg_acc_diff], [avg_param_change])
+
+@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="2.0.1")
 def main(args: Any):
     """
     Main function to parse arguments and run the training/unlearning pipeline.
@@ -217,36 +223,23 @@ def main(args: Any):
     ###
     # 1. Prepare the data and the model
     path = data_loading()
-    train_dl, unlearn_ds, retain_dl = data_preprocessing(args, path)
+    train_dl, unlearn_ds, retain_dl, test_dl = data_preprocessing(args, path)
      
     # 2. Create the model
     model = model_creation(args.architecture)
 
     # 3a. Train the model
-    trained_model = training(train_dl, model, args.architecture)
+    trained_model, trained_evaluation_results = training_base(train_dl, model, test_dl, args)
 
-    # 3b. Train the baseline model
-    # This one is only trained on the retain data, therefore it represents the ideal behaviour of the model after unlearning
-    baseline_model = training(retain_dl, model, args.architecture)
+    # 3b. Train the baseline model (Retain-only)
+    baseline_model, baseline_evaluation_results = training_target(retain_dl, model, test_dl, args)
 
     if args.softtargets:
         # 3c. Generate soft targets for the unlearning dataset
         unlearn_ds = creating_soft_targets(trained_model, unlearn_ds)
 
     # 4. Unlearn the model
-    unlearned_model = unlearning(trained_model, unlearn_ds, args.mu_algo)
-
-    # 5a. Evaluate Baseline Model
-    baseline_evaluation_results = evaluation(baseline_model, args=args, path=path)
-    print(f"Baseline Evaluation Results: {baseline_evaluation_results}")
-
-    # 5b. Evaluate the trained model
-    trained_evaluation_results = evaluation(trained_model, args=args, path=path)
-    print(f"Trained Evaluation Results: {trained_evaluation_results}")
-
-    # 5c. Evaluate the unlearned model
-    unlearned_evaluation_results = evaluation(unlearned_model, args=args, path=path)
-    print(f"Unlearned Evaluation Results: {unlearned_evaluation_results}")
+    unlearned_model, unlearned_evaluation_results = unlearning(trained_model, unlearn_ds, test_dl, args)
 
     # 6. Evaluate differences between models
     difference = evaluation_difference(original_model=trained_model, unlearned_model=unlearned_model)

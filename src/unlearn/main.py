@@ -1,12 +1,9 @@
-import torch
 from torch.nn import Module
-from typing import Dict, Any, Union
+from typing import Dict, Any, Optional
 import yaml
 import os
-import time
 from src.unlearn.algo import gradasc, graddiff
 from src.data.dataset_loaders import UnlearningPairDataset, UnlearningDataLoader 
-from clearml import Task
 
 # Define a mapping from algorithm name to its class
 ALGORITHM_MAP = {
@@ -19,7 +16,7 @@ def load_unlearning_config(algorithm: str) -> Dict[str, Any]:
     
     alg_name = algorithm.lower().replace(" ", "_")
     config_filename = f"{alg_name}.yaml"
-    config_path = os.path.join("configs", "unlearning", config_filename)
+    config_path = os.path.join("configs", "unlearn", config_filename)
     
     print(f"Attempting to load unlearning configuration for {algorithm} from {config_path}...")
     
@@ -37,13 +34,13 @@ def load_unlearning_config(algorithm: str) -> Dict[str, Any]:
 
     # Default/Fallback Configuration
     if alg_name == "gradasc":
-        return {"epochs": 1, "batch_size": 64, "learning_rate": 0.01, "optimizer": "SGD", "momentum": 0.9}
+        return {"epochs": 1, "batch_size": 32, "learning_rate": 0.0001, "optimizer": "SGD", "momentum": 0.9}
     elif alg_name == "graddiff":
-        return {"epochs": 1, "batch_size": 64, "learning_rate": 0.001, "optimizer": "SGD", "momentum": 0.9, "alpha": 0.5}
+        return {"epochs": 1, "batch_size": 32, "learning_rate": 0.00001, "optimizer": "SGD", "momentum": 0.9, "alpha": 0.5}
     
     return {} # Return empty dict if algorithm is unknown
 
-def run_unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, algorithm_name: str) -> Module:
+def run_unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, algorithm_name: str, test_loader: Optional[Any] = None) -> Module:
     """
     Selects, configures, and runs the specified unlearning algorithm.
     """
@@ -64,6 +61,6 @@ def run_unlearning(trained_model: Module, unlearn_ds: UnlearningPairDataset, alg
     print(f"Running unlearning using {AlgorithmClass.__name__}...")
     
     # Run the unlearning process
-    unlearned_model = unlearning_alg.unlearn(unlearn_dl)
+    unlearned_model = unlearning_alg.unlearn(unlearn_dl, test_loader=test_loader)
     
     return unlearned_model

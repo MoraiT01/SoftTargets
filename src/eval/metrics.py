@@ -1,8 +1,9 @@
+import re
 import torch
 import torch.nn as nn
 from torch.nn import Module
 from torch.utils.data import DataLoader
-from typing import Tuple
+from typing import Tuple, Dict, Literal
 
 def calculate_accuracy(output: torch.Tensor, target: torch.Tensor) -> int:
     """
@@ -111,3 +112,32 @@ def calculate_parameter_difference(model_a: Module, model_b: Module) -> float:
         return 0.0
         
     return total_diff / total_params
+
+def accuracy_distance(results_a: Dict[str, float], results_b: Dict[str, float], metric: Literal["accuracy", "loss"]="accuracy") -> float:
+    """
+    Calculates the average absolute difference in accuracy between two result dictionaries.
+    
+    Args:
+        results_a: Dictionary containing accuracy metrics (e.g., from model A).
+        results_b: Dictionary containing accuracy metrics (e.g., from model B).
+    """
+    total_diff = 0.0
+    count = 0
+    
+    # Pattern matches keys like "class_0_accuracy" or "class_cat_loss"
+    # Captures the middle part as the label
+    pattern = re.compile(fr"class_(.+)_{metric}")
+    
+    for key, value in results_a.items():
+        match = pattern.match(key)
+        if match:
+            # label = match.group(1)
+            # Extracted Difference for this label
+            if key in results_b:
+                diff = abs(value - results_b[key])
+                total_diff += diff
+                count += 1
+            else:
+                print(f"Warning: Key '{key}' found in results_a but not in results_b.")
+
+    return total_diff / count if count > 0 else 0.0

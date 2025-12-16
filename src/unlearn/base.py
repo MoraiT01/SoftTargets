@@ -2,9 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.nn import Module
-from typing import Dict, Any, Union
+from typing import Dict, Any, Optional
 import copy
-import os
 
 class BaseUnlearningAlgorithm:
     """Base class for all machine unlearning algorithms."""
@@ -38,11 +37,12 @@ class BaseUnlearningAlgorithm:
             print(f"Warning: Unsupported unlearning optimizer '{optimizer_name}'. Falling back to SGD.")
             return optim.SGD(self.model.parameters(), lr=lr, momentum=0.9)
             
-    def unlearn(self, unlearn_data_loader: Any) -> Module:
+    def unlearn(self, unlearn_data_loader: Any, test_loader: Optional[Any] = None) -> Module:
         """
         The main unlearning method to be implemented by subclasses.
         Args:
-            unlearn_data_loader: A DataLoader tailored for the algorithm (e.g., UnlearningDataLoader).
+            unlearn_data_loader: A DataLoader tailored for the algorithm.
+            test_loader: Optional DataLoader for evaluating progress during unlearning.
         
         Returns:
             The unlearned model.

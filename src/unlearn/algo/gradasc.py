@@ -1,9 +1,8 @@
-
 from torch.nn import Module
-
-from typing import Any
-
+from typing import Any, Optional
+from clearml import Task
 from src.unlearn.base import BaseUnlearningAlgorithm
+from src.eval.metrics import evaluate_loader
 
 class GradientAscent(BaseUnlearningAlgorithm):
     """
@@ -11,13 +10,19 @@ class GradientAscent(BaseUnlearningAlgorithm):
     This algorithm maximizes the loss on the forget set (L_F).
     """
     
-    def unlearn(self, unlearn_data_loader: Any) -> Module:
+    def unlearn(self, unlearn_data_loader: Any, test_loader: Optional[Any] = None) -> Module:
         """Runs the Gradient Ascent unlearning process."""
         print(f"Starting Gradient Ascent for {self.config.get('epochs', 1)} epoch(s).")
         optimizer = self._setup_optimizer()
         
         self.model.train()
         num_epochs = self.config.get("epochs", 1)
+        
+        # Get ClearML Logger
+        logger = None
+        task = Task.current_task()
+        if task:
+            logger = task.get_logger()
         
         for epoch in range(num_epochs):
             total_loss = 0.0
@@ -38,6 +43,18 @@ class GradientAscent(BaseUnlearningAlgorithm):
                 optimizer.step()
                 total_loss += loss_f.item()
             
-            print(f"  GA Epoch {epoch+1}/{num_epochs}: Average Loss: {total_loss / len(unlearn_data_loader):.4f}")
+            avg_loss = total_loss / len(unlearn_data_loader)
+            print(f"  GA Epoch {epoch+1}/{num_epochs}: Average Loss: {avg_loss:.4f}")
             
+            if logger:
+                logger.report_scalar(title="Unlearning (GA)", series="Forget Loss (Negative)", value=avg_loss, iteration=epoch+1)
+            
+            # Evaluate on Test Data if provided
+            if test_loader:
+                test_loss, test_acc = evaluate_loader(self.model, test_loader, self.device)
+                self.model.train() # Switch back to train mode
+                print(f"       | Test Acc: {test_acc:.4f}")
+                if logger:
+                    logger.report_scalar(title="Unlearning (GA)", series="Test Accuracy", value=test_acc, iteration=epoch+1)
+
         return self.model
