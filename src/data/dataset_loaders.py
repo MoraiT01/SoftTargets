@@ -42,6 +42,7 @@ class BaseDataset(Dataset):
 
         print(f"Loading dataset index from {csv_file}...")
         self.data_frame = pd.read_csv(csv_file, sep=';')
+        self.csv_file = csv_file
         self.root_dir = root_dir
         self.transform = transform if transform is not None else DEFAULT_TRANSFORMS
         np_tensor_to_label = {cls: str(i) for i, cls in enumerate(self.data_frame['Class_Label'].unique())}

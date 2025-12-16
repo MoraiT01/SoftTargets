@@ -6,6 +6,8 @@ from torch.utils.data import DataLoader
 from typing import Optional
 
 # Import the metric calculation functions
+from data.utils import load_training_config
+from src.data.dataset_loaders import TrainTestDataset
 import src.eval.metrics as metrics
 import src.eval.visualize as visualize
 
@@ -88,3 +90,30 @@ def visualize_pipeline_results(
     """
     print("\n--- Generating Visualizations ---")
     visualize.visualize_all(trained_res, base_res, unlearned_res, param_changes)
+
+def evaluation(model: Module, args: Any, path: str) -> Dict[str, float]: 
+    """
+    Evaluates the model on the test dataset.
+    """
+    
+    # Load architecture-specific config to get the batch size
+    temp_config = load_training_config(args.architecture)
+    batch_size = temp_config.get('batch_size', 64)
+    
+    # Updated to use split="test" instead of "train"
+    cls_dl = {
+        i: DataLoader(
+            dataset=TrainTestDataset(
+                    csv_file=path,
+                    root_dir=".",
+                    split="test", 
+                    classes=[str(i)]
+                ),
+            batch_size=batch_size,
+            shuffle=False,
+            ) for i in range(10)
+        }
+    
+    result_dict = evaluate(model, cls_dl)
+
+    return result_dict
