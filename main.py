@@ -32,7 +32,7 @@ HYPERPARAMS = {
 }
 
 # --- Define your pipeline components ---
-@PipelineDecorator.component(cache=True, return_values=["Data Path"])
+@PipelineDecorator.component(cache=True, name="Download Data", return_values=["Data Path"])
 def data_loading() -> str:
     try:
         path = download_data.main()
@@ -42,7 +42,7 @@ def data_loading() -> str:
 
     return str(path)
 
-@PipelineDecorator.component(cache=True, return_values=["Train Dataloader", "Unlearning Dataset", "Retain Dataloader", "Test Dataloader"])
+@PipelineDecorator.component(cache=True, name="Preprocess Data", return_values=["Train Dataloader", "Unlearning Dataset", "Retain Dataloader", "Test Dataloader"])
 def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPairDataset, DataLoader, DataLoader]:
     """
         return: Tuple of: Train Dataloader, UnlearningPairDataset, Retain Dataloader, Test Dataloader
@@ -80,7 +80,7 @@ def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPair
 
     return train_dl, unlearn_ds, retain_dl, test_dl
 
-@PipelineDecorator.component(cache=True, return_values=["Untrained Model"])
+@PipelineDecorator.component(cache=True, name="Create Startpoint", return_values=["Untrained Model"])
 def model_creation(architecute: str) -> Module:
     architecute = architecute.lower()
     print(f"Creating model with architecture: {architecute}")
@@ -92,18 +92,18 @@ def model_creation(architecute: str) -> Module:
     else:
         raise ValueError(f"Unknown architecture: {architecute}. Options are 'cnn' and 'mlp'.")
 
-@PipelineDecorator.component(cache=False, name = "Create Baseline", return_values=["Baseline Model", "Evaluation Results"])
-def training_base(train_loader: DataLoader, model: Module, architecture: str, test_loader: DataLoader) -> Tuple[Module, Dict[str, float]]:
+@PipelineDecorator.component(cache=False, name = "Train Baseline", return_values=["Baseline Model", "Evaluation Results"])
+def training_base(train_loader: DataLoader, model: Module, test_loader: DataLoader, args: Any) -> Tuple[Module, Dict[str, float]]:
     """
     Trains the provided model using the training data loader and architecture-specific configuration.
     """
     # Load architecture-specific training configuration
-    train_config = load_training_config(architecture)
+    train_config = load_training_config(args.architecture)
     
     if model is None:
         raise ValueError("Model object is missing.")
     
-    print(f"Starting training for {architecture} with config: {train_config}")
+    print(f"Starting training for {args.architecture} with config: {train_config}")
     
     # Call the main training function from the 'train' module
     # Passing test_loader to enable progress monitoring
@@ -118,7 +118,7 @@ def training_base(train_loader: DataLoader, model: Module, architecture: str, te
     
     return baseline_model, evaluation_results
 
-@PipelineDecorator.component(cache=False, name = "Create Target", return_values=["Trained Target Model", "Evaluation Results"])
+@PipelineDecorator.component(cache=False, name = "Train Target", return_values=["Trained Target Model", "Evaluation Results"])
 def training_target(train_loader: DataLoader, model: Module, test_loader: DataLoader, args: Any) -> Tuple[Module, Dict[str, float]]:
     """
     Trains the provided model using the training data loader and architecture-specific configuration.
@@ -144,7 +144,7 @@ def training_target(train_loader: DataLoader, model: Module, test_loader: DataLo
     
     return target_model, evaluation_results
 
-@PipelineDecorator.component(cache=False, return_values=["Evaluation Model Parameter Difference"])
+@PipelineDecorator.component(cache=False, name="Parameter Difference", return_values=["Evaluation Model Parameter Difference"])
 def evaluation_difference(original_model: Module, unlearned_model: Module) -> Dict[str, float]:
     """
     Evaluates the quantitive parameter difference between the original and unlearned models.
@@ -152,7 +152,7 @@ def evaluation_difference(original_model: Module, unlearned_model: Module) -> Di
     result_dict = compare_models(original_model, unlearned_model)
     return result_dict
 
-@PipelineDecorator.component(cache=False, return_values=["Soft Targets Unlearn Dataset"])
+@PipelineDecorator.component(cache=False, name="Create Soft Targets", return_values=["Soft Targets Unlearn Dataset"])
 def creating_soft_targets(model: Module, unlearn_ds: UnlearningPairDataset) -> UnlearningPairDataset:
     """
     Optional pipeline step to generate soft targets using the trained model.
@@ -176,7 +176,7 @@ def unlearning(target_model: Module, unlearn_ds: UnlearningPairDataset, mu_algo:
     
     return unlearned_model, evaluation_results
 
-@PipelineDecorator.component(cache=False)
+@PipelineDecorator.component(cache=False, name="Plotter")
 def plotter(
     trained_res: Dict[str, float],
     base_res: Dict[str, float],
@@ -188,7 +188,7 @@ def plotter(
     """
     visualize_pipeline_results(trained_res, base_res, unlearned_res, param_changes)
 
-@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="2.0.0")
+@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="2.0.1")
 def main(args: Any):
     """
     Main function to parse arguments and run the training/unlearning pipeline.
