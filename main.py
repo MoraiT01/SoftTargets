@@ -170,7 +170,7 @@ def unlearning(target_model: Module, unlearn_ds: UnlearningPairDataset, test_loa
     """
     # Delegate the heavy lifting to the run_unlearning function in the unlearn module
     # Passing test_loader for monitoring
-    unlearned_model =  unlearn.run_unlearning(target_model, unlearn_ds, args.architecture, test_loader=test_loader)
+    unlearned_model =  unlearn.run_unlearning(target_model, unlearn_ds, args.mu_algo, test_loader=test_loader)
 
     evaluation_results = evaluation(unlearned_model, args=args, path=test_loader.dataset.csv_file)
     
