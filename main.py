@@ -197,7 +197,7 @@ def plotter(
 
     aggregate_runs(args, [avg_acc_diff], [avg_param_change])
 
-@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="2.0.1")
+@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="2.1.0")
 def main(args: Any):
     """
     Main function to parse arguments and run the training/unlearning pipeline.
@@ -246,8 +246,12 @@ def main(args: Any):
     print(f"Model Differences between trained and unlearned: {difference}")
 
     # 7. Ploting
-    plotter(trained_res=trained_evaluation_results, base_res=baseline_evaluation_results, unlearned_res=unlearned_evaluation_results, param_changes=difference)
-
+    plotter(
+        trained_res=trained_evaluation_results, 
+        base_res=baseline_evaluation_results, 
+        unlearned_res=unlearned_evaluation_results, 
+        param_changes=difference,
+        args=args,)
     print("\nExperiment finished.")
 
 
