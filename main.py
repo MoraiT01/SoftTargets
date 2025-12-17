@@ -43,7 +43,7 @@ def data_loading() -> str:
 
     return str(path)
 
-@PipelineDecorator.component(cache=True, name="Preprocess Data", return_values=["Train Dataloader", "Unlearning Dataset", "Retain Dataloader", "Test Dataloader"])
+@PipelineDecorator.component(cache=False, name="Preprocess Data", return_values=["Train Dataloader", "Unlearning Dataset", "Retain Dataloader", "Test Dataloader"])
 def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPairDataset, DataLoader, DataLoader]:
     """
         return: Tuple of: Train Dataloader, UnlearningPairDataset, Retain Dataloader, Test Dataloader
@@ -81,7 +81,7 @@ def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPair
 
     return train_dl, unlearn_ds, retain_dl, test_dl
 
-@PipelineDecorator.component(cache=True, name="Create Startpoint", return_values=["Untrained Model"])
+@PipelineDecorator.component(cache=False, name="Create Startpoint", return_values=["Untrained Model"])
 def model_creation(architecute: str) -> Module:
     architecute = architecute.lower()
     print(f"Creating model with architecture: {architecute}")
