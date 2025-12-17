@@ -197,7 +197,7 @@ def plotter(
 
     aggregate_runs(args, [avg_acc_diff], [avg_param_change])
 
-@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="2.1.0")
+@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="2.1.1")
 def main(args: Any):
     """
     Main function to parse arguments and run the training/unlearning pipeline.

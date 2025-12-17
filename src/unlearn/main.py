@@ -25,7 +25,9 @@ def load_unlearning_config(algorithm: str) -> Dict[str, Any]:
 
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
-            return config.get("unlearning", {})
+            unlearning_configs = config.get("unlearning", {})
+            print(f"Loaded unlearning configuration: {unlearning_configs}")
+            return unlearning_configs
             
     except FileNotFoundError:
         print(f"Warning: Configuration file not found at {config_path}. Using default hardcoded config.")
