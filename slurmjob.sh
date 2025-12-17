@@ -78,21 +78,48 @@ python -c "import torch; print(torch.cuda.is_available())"
 # - softtargets
 # Example Call: python main.py --dataset mnist --mu_algo gradasc --architecture mlp --softtargets
 
-DATASET="fashion_mnist"
-MU_ALGO="graddiff"
-ARCHITECTURE="mlp"
-SOFTTARGETS=false 
+# DATASET="fashion_mnist"
+# MU_ALGO="graddiff"
+# ARCHITECTURE="mlp"
+# SOFTTARGETS=false 
 
-for (( i=1; i<=1; i++ ))
+### Main Loops ###
+# We need to loop over every permutation of the hyperparameters
+# Here we only run one configuration for demonstration purposes
+
+# Loop over dataset
+for DATASET in "mnist" "fashion_mnist"
 do
-  echo "Running iteration: $i"
+  # loop over mu_algo
+  for MU_ALGO in "gradasc" "graddiff"
+  do
+    # loop over architecture
+    for ARCHITECTURE in "mlp" "cnn"
+    do
+      # loog over softtargets
+      for SOFTTARGETS in true false
+      do
+        echo "Running configuration: Dataset=$DATASET, MU_ALGO=$MU_ALGO, ARCHITECTURE=$ARCHITECTURE, SOFTTARGETS=$SOFTTARGETS"
 
-  if $SOFTTARGETS; then
-    python main.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE --softtargets
-  else
-    python main.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE
-  fi
-done
+        ### Inner Loop: Multiple Runs for Evaluation ###
+        # For evaluation purposes, we run it a minimul of 30 times
+        for (( i=1; i<=30; i++ ))
+        do
+          echo "Running iteration: $i"
 
-### Final Aggregation Step ###
-python src/eval/aggregate_results.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE --softtargets $SOFTTARGETS
+          if $SOFTTARGETS; then
+            python main.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE --softtargets
+          else
+            python main.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE
+          fi
+        done # End of 30runs
+
+        ### Final Aggregation Step ###
+        python src/eval/aggregate_results.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE --softtargets $SOFTTARGETS
+
+      done # End of softtargets
+    done # End of architecture
+  done # End of mu_algo
+done # End of dataset
+
+echo "All configurations have been executed."
