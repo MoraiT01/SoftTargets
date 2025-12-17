@@ -1,4 +1,4 @@
-# configurations/mlp.yaml
+# configurations/cnn.yaml
 
 training:
   epochs: 10
@@ -6,4 +6,4 @@ training:
   learning_rate: 0.0001
   optimizer: Adam
   loss_function: NLLLoss
-  save_path: "saves/mlp_trained_model.pth"
+  save_path: "saves/cnn_trained_model.pth"

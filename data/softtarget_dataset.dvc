@@ -1,6 +1,0 @@
-outs:
-- md5: 8d0c9ec708cb753a68d3e72252a8ad32.dir
-  size: 58285200
-  nfiles: 158835
-  hash: md5
-  path: softtarget_dataset

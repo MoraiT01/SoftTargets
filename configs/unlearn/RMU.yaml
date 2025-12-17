@@ -1,0 +1,5 @@
+# configs/unlearning/rmu.yaml
+
+unlearning:
+  epochs: 10
+  batch_size: 32         # Should be the same as training batch size for consistency
