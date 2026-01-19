@@ -18,7 +18,7 @@ IMAGE_ROOT_DIR = "."
 
 # Define standard transformations for the images
 DEFAULT_TRANSFORMS = transforms.Compose([
-    transforms.Resize((32, 32)),
+    transforms.Resize((28, 28)),
     transforms.RandomCrop(32, padding=4),      # Augmentation
     transforms.RandomHorizontalFlip(),         # Augmentation
     transforms.RandomRotation(30),             # Augmentation
@@ -62,13 +62,9 @@ class BaseDataset(Dataset):
     def _load_image(self, img_path: str) -> torch.Tensor:
         """Helper to load and transform an image."""
         # full_path = os.path.join(self.root_dir, img_path)
-        try:
-            # CHANGE: Convert to 'L' (Grayscale) instead of 'RGB'
-            image = Image.open(img_path).convert('L') #
-        except Exception as e:
-            print(f"Error loading image at {img_path}: {e}")
-            # Return a zero tensor or handle error appropriately
-            return torch.zeros(1, 28, 28)
+       
+        # Convert to 'L' (Grayscale) instead of 'RGB'
+        image = Image.open(img_path).convert('L') #
         
         if self.transform:
             return self.transform(image) # type: ignore

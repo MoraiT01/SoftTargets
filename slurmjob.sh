@@ -91,7 +91,7 @@ python -c "import torch; print(torch.cuda.is_available())"
 for DATASET in "mnist" "fashion_mnist"
 do
   # loop over mu_algo
-  for MU_ALGO in "gradasc" "graddiff"
+  for MU_ALGO in "gradasc" "graddiff" "nova"
   do
     # loop over architecture
     for ARCHITECTURE in "mlp" "cnn"

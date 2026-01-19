@@ -14,7 +14,8 @@ class TwoLayerPerceptron(BaseModel):
         """
         Initializes the model
         """
-        super(TwoLayerPerceptron, self).__init__(standard_scaler=standard_scaler)
+        super().__init__(standard_scaler=standard_scaler)
+        
         self.fc1 = torch.nn.Linear(784, 800)
         self.fc3 = torch.nn.Linear(800, 10)
 

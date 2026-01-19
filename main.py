@@ -65,8 +65,8 @@ def data_preprocessing(args: Any, path: str, seed: int,) -> Tuple[DataLoader, Un
         print(f"Failed to plot dataset stats: {e}")
 
     # Create a generator for the DataLoader
+    torch.manual_seed(seed=seed)
     g = torch.Generator()
-    g.manual_seed(seed=seed)
 
     # Load architecture-specific config to get the batch size
     temp_config = load_training_config(args.architecture)
@@ -246,7 +246,7 @@ def main(args: Any):
     # checking if the hyperparameters are supported
     if args.architecture not in ["cnn", "mlp"]:
         raise ValueError(f"Unsupported architecture: {args.architecture}. Options are 'cnn' and 'mlp'.")
-    if args.mu_algo not in ["gradasc", "graddiff"]:
+    if args.mu_algo not in ["gradasc", "graddiff", "nova"]:
         raise ValueError(f"Unsupported machine unlearning algorithm: {args.mu_algo}. Options are 'gradasc', 'graddiff' and 'nova'.")
     if args.dataset not in ["mnist", "fashion_mnist"]:
         raise ValueError(f"Unsupported dataset: {args.dataset}. Options are 'mnist' and 'fashion_mnist'.")

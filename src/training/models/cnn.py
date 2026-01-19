@@ -8,7 +8,7 @@ class CNN(BaseModel):
             self,
             standard_scaler: StandardScaler = StandardScaler(torch.tensor([0., 0., 0.]), torch.tensor([1., 1., 1.])),
             ):
-        super(CNN, self).__init__(standard_scaler=standard_scaler)
+        super().__init__(standard_scaler=standard_scaler)
         
         # Convolutional layers
         self.conv1 = torch.nn.Conv2d(1, 32, kernel_size=3, padding=1)  # Input channels=3 for RGB
