@@ -37,7 +37,7 @@ class CNN(BaseModel):
         
         # Fully connected layers with ReLU and softmax
         x = torch.relu(self.fc1(x))
-        x = torch.log_softmax(self.fc2(x), dim=1)
+        x = self.fc2(x)
         
         return x
 

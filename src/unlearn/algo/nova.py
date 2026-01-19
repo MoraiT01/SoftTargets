@@ -1,14 +1,48 @@
 from torch.nn import Module
+from torch.optim import Optimizer
+from torch import randn
 from typing import Any, Optional
 from clearml import Task
 from src.unlearn.base import BaseUnlearningAlgorithm
 from src.eval.metrics import evaluate_loader
 
-class GradientDifference(BaseUnlearningAlgorithm):
+class NOVA(BaseUnlearningAlgorithm):
     """
-    Implements the Gradient Difference (GD) unlearning algorithm.
-    Optimizes the combined loss: L_GD = (1 - alpha) * L_R - alpha * L_F
+    Docstring for NOVA
     """
+    
+    def forget_loss(
+            self,
+            forget_data,
+            forget_target,
+            optimizer: Optimizer,
+            epoch: int,
+            ):
+
+        f = [8]
+        f.extend(forget_data.squeeze(0).shape)
+        noise_batch = randn(f) # Original vector of size 10
+
+        forget_output = self.model(
+            noise_batch.to(self.device),
+        )
+
+        forget_loss = self.criterion(
+            forget_output,
+            forget_target,
+        )
+
+        optimizer.zero_grad()
+        forget_loss.backward()
+        optimizer.step()
+
+        # Get ClearML Logger
+        logger = None
+        task = Task.current_task()
+        if task:
+            logger = task.get_logger()
+        if logger:
+            logger.report_scalar(title="Unlearning (GD)", series="Forget Loss", value=forget_loss, iteration=epoch+1)
 
     def unlearn(self, unlearn_data_loader: Any, test_loader: Optional[Any] = None) -> Module:
         """Runs the Gradient Difference unlearning process."""
@@ -36,8 +70,13 @@ class GradientDifference(BaseUnlearningAlgorithm):
                 # --- Forget Loss (L_F) ---
                 f_data = forget_data['input'].to(self.device)
                 f_target_indices = forget_data['labels'].to(self.device)
-                f_output = self.model(f_data)
-                loss_f = self.criterion(f_output, f_target_indices)
+                
+                self.forget_loss(
+                    f_data,
+                    f_target_indices,
+                    optimizer,
+                    epoch=epoch,
+                )
 
                 # --- Retain Loss (L_R) ---
                 r_data = retain_data['input'].to(self.device)
@@ -47,7 +86,7 @@ class GradientDifference(BaseUnlearningAlgorithm):
 
                 # --- Combined Loss (L_GD) ---
                 # Total Loss to MINIMIZE: (1-alpha) * L_R - alpha * L_F
-                combined_loss = alpha * loss_r - loss_f
+                combined_loss = alpha * loss_r
 
                 optimizer.zero_grad()
                 combined_loss.backward()
@@ -59,14 +98,15 @@ class GradientDifference(BaseUnlearningAlgorithm):
             print(f"  GD Epoch {epoch+1}/{num_epochs}: Average Combined Loss: {avg_loss:.4f}")
             
             if logger:
-                logger.report_scalar(title="Unlearning (GD)", series="Combined Loss", value=avg_loss, iteration=epoch+1)
+                logger.report_scalar(title="Unlearning (GD)", series="Retain Loss", value=avg_loss, iteration=epoch+1)
 
             # Evaluate on Test Data if provided
             if test_loader:
                 test_loss, test_acc = evaluate_loader(self.model, test_loader, self.device)
                 self.model.train() # Switch back to train mode
-                print(f"       | Test Acc: {test_acc:.4f}")
+                print(f"Test Loss: {test_loss:.4f} | Test Acc: {test_acc:.4f}")
                 if logger:
+                    logger.report_scalar(title="Unlearning (GD)", series="Test Loss", value=test_loss, iteration=epoch+1)
                     logger.report_scalar(title="Unlearning (GD)", series="Test Accuracy", value=test_acc, iteration=epoch+1)
             
         return self.model

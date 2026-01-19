@@ -23,7 +23,8 @@ from src.training.models.mlp import TwoLayerPerceptron
 from src.eval.main import compare_models, visualize_pipeline_results, final_metrics_summary
 from src.eval.aggregate_results import aggregate_runs
 
-from typing import Dict, Any, Tuple, cast
+from typing import Dict, Any, Tuple, cast, Optional
+import yaml
 
 # --- Define your Hyperparameters ---
 HYPERPARAMS = {
@@ -45,7 +46,7 @@ def data_loading() -> str:
     return str(path)
 
 @PipelineDecorator.component(cache=True, name="Preprocess Data", return_values=["Train Dataloader", "Unlearning Dataset", "Retain Dataloader", "Test Dataloader"])
-def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPairDataset, DataLoader, DataLoader]:
+def data_preprocessing(args: Any, path: str, seed: int,) -> Tuple[DataLoader, UnlearningPairDataset, DataLoader, DataLoader]:
     """
         return: Tuple of: Train Dataloader, UnlearningPairDataset, Retain Dataloader, Test Dataloader
     """
@@ -63,27 +64,31 @@ def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPair
     except Exception as e:
         print(f"Failed to plot dataset stats: {e}")
 
+    # Create a generator for the DataLoader
+    g = torch.Generator()
+    g.manual_seed(seed=seed)
+
     # Load architecture-specific config to get the batch size
     temp_config = load_training_config(args.architecture)
     batch_size = temp_config.get('batch_size', 64)
     
     # Instantiate the Train Dataset
     train_ds    = TrainTestDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="train") 
-    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, generator=g)
     
     unlearn_ds  = UnlearningPairDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="train")
 
     retain_ds   = TrainTestDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="train", sample_mode="retain")
-    retain_dl   = DataLoader(retain_ds, batch_size=batch_size, shuffle=True)
+    retain_dl   = DataLoader(retain_ds, batch_size=batch_size, shuffle=True, generator=g)
 
     # Instantiate the Test Dataset
     test_ds = TrainTestDataset(csv_file=f"{path}/{args.dataset}_index.csv", root_dir=".", split="test")
-    test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+    test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, generator=g)
 
     return train_dl, unlearn_ds, retain_dl, test_dl
 
 @PipelineDecorator.component(cache=True, name="Create Startpoint", return_values=["Untrained Model"])
-def model_creation(architecute: str, train_loader: DataLoader) -> Module:
+def model_creation(architecute: str, train_loader: DataLoader, seed: int) -> Module:
     architecute = architecute.lower()
     print(f"Creating model with architecture: {architecute}")
 
@@ -93,6 +98,7 @@ def model_creation(architecute: str, train_loader: DataLoader) -> Module:
     mean_std = dict(mean=mean.cpu(), std=std.cpu())
     standard_scaler = StandardScaler(**mean_std)  
 
+    torch.manual_seed(seed=seed)
     if architecute == "cnn":
         return CNN(standard_scaler=standard_scaler) 
     elif architecute == "mlp":
@@ -174,13 +180,37 @@ def creating_soft_targets(model: Module, unlearn_ds: UnlearningPairDataset) -> U
     return unlearn_ds
 
 @PipelineDecorator.component(cache=False, name="Unlearning", return_values=["Unlearned Model", "Evaluation Results"])
-def unlearning(target_model: Module, unlearn_ds: UnlearningPairDataset, test_loader: DataLoader, args: Any) -> Tuple[Module, Dict[str, float]]:
+def unlearning(
+        target_model: Module,
+        unlearn_ds: UnlearningPairDataset,
+        test_loader: DataLoader,
+        algorithm_name: str,
+        epochs: int,
+        batch_size: int,
+        learning_rate: float,
+        optimizer: str,
+        momentum: float,
+        alpha: Optional[float] = None,
+        noise_samples: Optional[int] = None,
+        ) -> Tuple[Module, Dict[str, float]]:
     """
     Runs the specified machine unlearning algorithm on the trained model.
     """
     # Delegate the heavy lifting to the run_unlearning function in the unlearn module
     # Passing test_loader for monitoring
-    unlearned_model =  unlearn.run_unlearning(target_model, unlearn_ds, args.mu_algo, test_loader=test_loader)
+    unlearned_model =  unlearn.run_unlearning(
+        target_model,
+        unlearn_ds,
+        algorithm_name=algorithm_name,
+        test_loader=test_loader,
+        epochs=epochs,
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        optimizer=optimizer,
+        momentum=momentum,
+        alpha=alpha,
+        noise_samples=noise_samples,
+        )
 
     dataset = cast(TrainTestDataset, test_loader.dataset)
     evaluation_results = evaluation(unlearned_model, args=args, path=dataset.csv_file)
@@ -217,7 +247,7 @@ def main(args: Any):
     if args.architecture not in ["cnn", "mlp"]:
         raise ValueError(f"Unsupported architecture: {args.architecture}. Options are 'cnn' and 'mlp'.")
     if args.mu_algo not in ["gradasc", "graddiff"]:
-        raise ValueError(f"Unsupported machine unlearning algorithm: {args.mu_algo}. Options are 'gradasc' and 'graddiff'.")
+        raise ValueError(f"Unsupported machine unlearning algorithm: {args.mu_algo}. Options are 'gradasc', 'graddiff' and 'nova'.")
     if args.dataset not in ["mnist", "fashion_mnist"]:
         raise ValueError(f"Unsupported dataset: {args.dataset}. Options are 'mnist' and 'fashion_mnist'.")
     
@@ -233,10 +263,10 @@ def main(args: Any):
     ###
     # 1. Prepare the data and the model
     path = data_loading()
-    train_dl, unlearn_ds, retain_dl, test_dl = data_preprocessing(args, path)
+    train_dl, unlearn_ds, retain_dl, test_dl = data_preprocessing(args, path, seed=42)
      
     # 2. Create the model
-    model = model_creation(args.architecture, train_dl)
+    model = model_creation(args.architecture, train_dl, seed=42)
 
     # 3a. Train the model
     trained_model, trained_evaluation_results = training_base(train_dl, model, test_dl, args)
@@ -249,7 +279,20 @@ def main(args: Any):
         unlearn_ds = creating_soft_targets(trained_model, unlearn_ds)
 
     # 4. Unlearn the model
-    unlearned_model, unlearned_evaluation_results = unlearning(trained_model, unlearn_ds, test_dl, args)
+    unlearn_config = yaml.load(open(f"configs/unlearn/{args.mu_algo}.yaml"), Loader=yaml.FullLoader)
+    unlearned_model, unlearned_evaluation_results = unlearning(
+        trained_model,
+        unlearn_ds,
+        test_dl,
+        args,
+        epochs=unlearn_config["unlearning"]["epochs"],
+        batch_size=unlearn_config["unlearning"]["batch_size"],
+        learning_rate=unlearn_config["unlearning"]["learning_rate"],
+        optimizer=unlearn_config["unlearning"]["optimizer"],
+        momentum=unlearn_config["unlearning"]["momentum"],
+        alpha=unlearn_config["unlearning"]["alpha"] if "alpha" in unlearn_config["unlearning"] else None,
+        noise_samples=unlearn_config["unlearning"]["noise_samples"] if "noise_samples" in unlearn_config["unlearning"] else None,
+    )
 
     # 6. Evaluate differences between models
     difference = evaluation_difference(original_model=trained_model, unlearned_model=unlearned_model)

@@ -12,11 +12,11 @@ class GradientAscent(BaseUnlearningAlgorithm):
     
     def unlearn(self, unlearn_data_loader: Any, test_loader: Optional[Any] = None) -> Module:
         """Runs the Gradient Ascent unlearning process."""
-        print(f"Starting Gradient Ascent for {self.config.get('epochs', 1)} epoch(s).")
+        print(f"Starting Gradient Ascent for {self.epochs} epoch(s).")
         optimizer = self._setup_optimizer()
         
         self.model.train()
-        num_epochs = self.config.get("epochs", 1)
+        num_epochs = self.epochs
         
         # Get ClearML Logger
         logger = None
@@ -31,7 +31,7 @@ class GradientAscent(BaseUnlearningAlgorithm):
                 forget_data = batch['forget']
                 data = forget_data['input'].to(self.device)
                 # Soft labels are already one-hot, convert to class indices for NLLLoss
-                target_indices = forget_data['labels'].argmax(dim=1).to(self.device)
+                target_indices = forget_data['labels'].to(self.device)
 
                 optimizer.zero_grad()
                 output = self.model(data)

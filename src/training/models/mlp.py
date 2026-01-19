@@ -31,7 +31,7 @@ class TwoLayerPerceptron(BaseModel):
         x = self.fc1(x)
         x = torch.relu(x)
         x = self.fc3(x)
-        x = torch.log_softmax(x, dim=1)
+        
         return x
     
     __str__ = lambda self: "TwoLayerPerceptron"
