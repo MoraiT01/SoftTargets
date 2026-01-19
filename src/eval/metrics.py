@@ -36,7 +36,7 @@ def evaluate_loader(model: Module, data_loader: DataLoader, device: torch.device
     """
     model.eval()
     # Using NLLLoss consistent with the training (assuming model outputs log_softmax)
-    criterion = nn.NLLLoss() 
+    criterion = nn.CrossEntropyLoss()
     
     total_loss = 0.0
     total_correct = 0
@@ -46,21 +46,14 @@ def evaluate_loader(model: Module, data_loader: DataLoader, device: torch.device
         for data, target in data_loader:
             data, target = data.to(device), target.to(device)
             
-            # The TrainTestDataset returns one-hot encoded targets.
-            # nn.NLLLoss expects class indices (LongTensor).
-            if target.dim() > 1 and target.size(1) > 1:
-                target_indices = target.argmax(dim=1)
-            else:
-                target_indices = target
-            
             output = model(data)
             
             # Calculate Loss (summed up, to average correctly over total samples later)
-            loss = criterion(output, target_indices)
+            loss = criterion(output, target)
             total_loss += loss.item() * data.size(0)
             
             # Calculate Accuracy
-            total_correct += calculate_accuracy(output, target_indices)
+            total_correct += calculate_accuracy(output, target.argmax(dim=1))
             total_samples += data.size(0)
             
     avg_loss = total_loss / total_samples if total_samples > 0 else 0.0

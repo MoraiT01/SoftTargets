@@ -17,12 +17,9 @@ def train_epoch(model: Module, data_loader: DataLoader, optimizer: optim.Optimiz
     for _, (data, target) in enumerate(data_loader):
         data, target = data.to(device), target.to(device)
         
-        # Convert one-hot target tensor to class indices (required by nn.NLLLoss)
-        target_indices = target.argmax(dim=1)
-        
         optimizer.zero_grad()
         output = model(data)
-        loss = criterion(output, target_indices)
+        loss = criterion(output, target)
         loss.backward()
         optimizer.step()
         
