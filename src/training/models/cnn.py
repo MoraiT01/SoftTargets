@@ -1,10 +1,14 @@
 """Simple Convolutional Neural Network (CNN) model for image classification."""
 
 import torch
+from src.training.models.base import BaseModel, StandardScaler
 
-class CNN(torch.nn.Module):
-    def __init__(self,):
-        super(CNN, self).__init__()
+class CNN(BaseModel):
+    def __init__(
+            self,
+            standard_scaler: StandardScaler = StandardScaler(torch.tensor([0., 0., 0.]), torch.tensor([1., 1., 1.])),
+            ):
+        super(CNN, self).__init__(standard_scaler=standard_scaler)
         
         # Convolutional layers
         self.conv1 = torch.nn.Conv2d(1, 32, kernel_size=3, padding=1)  # Input channels=3 for RGB
@@ -21,6 +25,8 @@ class CNN(torch.nn.Module):
         self.path = None
     
     def forward(self, x):
+
+        x = self.scale(x)
         # Convolutional layers with ReLU and pooling
         x = self.pool(torch.relu(self.conv1(x)))
         x = self.pool(torch.relu(self.conv2(x)))
@@ -34,11 +40,5 @@ class CNN(torch.nn.Module):
         x = torch.log_softmax(self.fc2(x), dim=1)
         
         return x
-    
-    def set_path(self, new_path: str):
-        self.path = new_path
-
-    def get_path(self):
-        return self.path
 
     __str__ = lambda self: "CNN"

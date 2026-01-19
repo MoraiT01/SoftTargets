@@ -1,16 +1,20 @@
 """Simple Multi-Layer Perceptron (MLP) model for image classification."""
 
 import torch
+from src.training.models.base import BaseModel, StandardScaler
 
-class TwoLayerPerceptron(torch.nn.Module):
+class TwoLayerPerceptron(BaseModel):
     """
     A two layer perceptron model used for MNIST
     """
-    def __init__(self):
+    def __init__(
+            self,
+            standard_scaler: StandardScaler = StandardScaler(torch.tensor([0., 0., 0.]), torch.tensor([1., 1., 1.])),
+            ):
         """
         Initializes the model
         """
-        super(TwoLayerPerceptron, self).__init__()
+        super(TwoLayerPerceptron, self).__init__(standard_scaler=standard_scaler)
         self.fc1 = torch.nn.Linear(784, 800)
         self.fc3 = torch.nn.Linear(800, 10)
 
@@ -20,6 +24,7 @@ class TwoLayerPerceptron(torch.nn.Module):
         """
         Defines the forward pass of the model
         """
+        x = self.scale(x)
         # Flatten the tensor from [Batch, 1, H, W] to [Batch, H*W]
         x = x.view(x.size(0), -1) # Correctly flattens to [Batch, 784] for grayscale
 
@@ -28,17 +33,5 @@ class TwoLayerPerceptron(torch.nn.Module):
         x = self.fc3(x)
         x = torch.log_softmax(x, dim=1)
         return x
-    
-    def set_path(self, new_path: str):
-        """
-        Sets the path to the model
-        """
-        self.path = new_path
-
-    def get_path(self):
-        """
-        Gets the path to the model
-        """
-        return self.path
     
     __str__ = lambda self: "TwoLayerPerceptron"

@@ -1,5 +1,6 @@
 import argparse
 import src.training.train as train
+from src.training.models.base import StandardScaler
 import src.unlearn.main as unlearn
 
 # You can import from your 'src' folder because of the PYTHONPATH in the Dockerfile
@@ -22,7 +23,7 @@ from src.training.models.mlp import TwoLayerPerceptron
 from src.eval.main import compare_models, visualize_pipeline_results, final_metrics_summary
 from src.eval.aggregate_results import aggregate_runs
 
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, cast
 
 # --- Define your Hyperparameters ---
 HYPERPARAMS = {
@@ -82,14 +83,20 @@ def data_preprocessing(args: Any, path: str) -> Tuple[DataLoader, UnlearningPair
     return train_dl, unlearn_ds, retain_dl, test_dl
 
 @PipelineDecorator.component(cache=True, name="Create Startpoint", return_values=["Untrained Model"])
-def model_creation(architecute: str) -> Module:
+def model_creation(architecute: str, train_loader: DataLoader) -> Module:
     architecute = architecute.lower()
     print(f"Creating model with architecture: {architecute}")
 
+    data = torch.cat([b for b,_ in train_loader])
+    mean = data.mean(dim=[0, 2, 3])
+    std = data.std(dim=[0, 2, 3])
+    mean_std = dict(mean=mean.cpu(), std=std.cpu())
+    standard_scaler = StandardScaler(**mean_std)  
+
     if architecute == "cnn":
-        return CNN() 
+        return CNN(standard_scaler=standard_scaler) 
     elif architecute == "mlp":
-        return TwoLayerPerceptron() 
+        return TwoLayerPerceptron(standard_scaler=standard_scaler) 
     else:
         raise ValueError(f"Unknown architecture: {architecute}. Options are 'cnn' and 'mlp'.")
 
@@ -115,7 +122,9 @@ def training_base(train_loader: DataLoader, model: Module, test_loader: DataLoad
         test_loader=test_loader 
     )
 
-    evaluation_results = evaluation(baseline_model, args=args, path=test_loader.dataset.csv_file)
+    dataset = cast(TrainTestDataset, test_loader.dataset)
+
+    evaluation_results = evaluation(baseline_model, args=args, path=dataset.csv_file)
     
     return baseline_model, evaluation_results
 
@@ -140,8 +149,8 @@ def training_target(train_loader: DataLoader, model: Module, test_loader: DataLo
         config=train_config,
         test_loader=test_loader 
     )
-
-    evaluation_results = evaluation(target_model, args=args, path=test_loader.dataset.csv_file)
+    dataset = cast(TrainTestDataset, test_loader.dataset)
+    evaluation_results = evaluation(target_model, args=args, path=dataset.csv_file)
     
     return target_model, evaluation_results
 
@@ -165,7 +174,7 @@ def creating_soft_targets(model: Module, unlearn_ds: UnlearningPairDataset) -> U
     return unlearn_ds
 
 @PipelineDecorator.component(cache=False, name="Unlearning", return_values=["Unlearned Model", "Evaluation Results"])
-def unlearning(target_model: Module, unlearn_ds: UnlearningPairDataset, test_loader: DataLoader, args: Any) -> Module:
+def unlearning(target_model: Module, unlearn_ds: UnlearningPairDataset, test_loader: DataLoader, args: Any) -> Tuple[Module, Dict[str, float]]:
     """
     Runs the specified machine unlearning algorithm on the trained model.
     """
@@ -173,7 +182,8 @@ def unlearning(target_model: Module, unlearn_ds: UnlearningPairDataset, test_loa
     # Passing test_loader for monitoring
     unlearned_model =  unlearn.run_unlearning(target_model, unlearn_ds, args.mu_algo, test_loader=test_loader)
 
-    evaluation_results = evaluation(unlearned_model, args=args, path=test_loader.dataset.csv_file)
+    dataset = cast(TrainTestDataset, test_loader.dataset)
+    evaluation_results = evaluation(unlearned_model, args=args, path=dataset.csv_file)
     
     return unlearned_model, evaluation_results
 
@@ -226,7 +236,7 @@ def main(args: Any):
     train_dl, unlearn_ds, retain_dl, test_dl = data_preprocessing(args, path)
      
     # 2. Create the model
-    model = model_creation(args.architecture)
+    model = model_creation(args.architecture, train_dl)
 
     # 3a. Train the model
     trained_model, trained_evaluation_results = training_base(train_dl, model, test_dl, args)

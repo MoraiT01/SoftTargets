@@ -95,7 +95,7 @@ class TrainTestDataset(BaseDataset):
     """
     A standard PyTorch dataset for training or testing a model.
     Filters the data based on the 'train_split' column.
-Extended to support sampling modes (all/forget/retain), class filtering, 
+    Extended to support sampling modes (all/forget/retain), class filtering, 
     and dynamic forget column selection.
     """
     def __init__(self, 
