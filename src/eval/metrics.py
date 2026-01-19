@@ -111,7 +111,7 @@ def calculate_parameter_difference(model_a: Module, model_b: Module) -> float:
     if total_params == 0:
         return 0.0
         
-    return total_diff / total_params
+    return total_diff # / total_params
 
 def accuracy_distance(results_a: Dict[str, float], results_b: Dict[str, float], metric: Literal["accuracy", "loss"]="accuracy") -> float:
     """

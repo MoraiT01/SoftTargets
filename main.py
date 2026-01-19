@@ -189,13 +189,13 @@ def plotter(
     Calls the visualization module to generate and display/save visualizations.
     """
     # Reduce the results to 2 metrics
-    # - Average Accuracy Distance to Baseline
-    # - Average Change in Parameters
-    avg_acc_diff, avg_param_change = final_metrics_summary(trained_res, base_res, unlearned_res, param_changes)
+    # - Accuracy Distance to Baseline
+    # - Total Change in Parameters
+    acc_diff, param_change = final_metrics_summary(trained_res, base_res, unlearned_res, param_changes)
     # Visualization
     visualize_pipeline_results(trained_res, base_res, unlearned_res, param_changes)
 
-    aggregate_runs(args, [avg_acc_diff], [avg_param_change])
+    aggregate_runs(args, [acc_diff], [param_change])
 
 @PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="3.0.0")
 def main(args: Any):

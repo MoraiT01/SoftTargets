@@ -63,20 +63,20 @@ def compare_models(model_orig: Module, model_unlearned: Module) -> Dict[str, flo
     print("Comparing model parameters...")
     
     # Delegate calculation to metrics.py
-    avg_diff = metrics.calculate_parameter_difference(model_orig, model_unlearned)
+    parameter_diff = metrics.calculate_parameter_difference(model_orig, model_unlearned)
     
-    print(f"Average Parameter Change: {avg_diff:.6f}")
+    print(f"Average Parameter Change: {parameter_diff:.6f}")
     
     # --- CLEARML INTEGRATION ---
     task = Task.current_task()
     if task:
         task.get_logger().report_single_value(
-            name="Average Parameter Change", value=avg_diff
+            name= "Parameter Change", value=parameter_diff
         )
     # ---------------------------
     
     return {
-        "avg_parameter_change": avg_diff
+        "parameter_change": parameter_diff
     }
 
 def visualize_pipeline_results(
@@ -132,6 +132,6 @@ def final_metrics_summary(
     acc_d = metrics.accuracy_distance(base_res, unlearned_res, metric="accuracy")
 
     task.get_logger().report_single_value("Accuracy Distance", value=acc_d)
-    task.get_logger().report_single_value("Average Parameter Change", value=param_changes["avg_parameter_change"])
+    task.get_logger().report_single_value("Parameter Change", value=param_changes["parameter_change"])
 
-    return acc_d, param_changes["avg_parameter_change"]
+    return acc_d, param_changes["parameter_change"]

@@ -103,19 +103,19 @@ do
 
         ### Inner Loop: Multiple Runs for Evaluation ###
         # For evaluation purposes, we run it a minimul of 30 times
-        for (( i=1; i<=30; i++ ))
-        do
+        # for (( i=1; i<=30; i++ ))
+        # do
           echo "Running iteration: $i"
 
-          if $SOFTTARGETS; then
-            python main.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE --softtargets
-          else
-            python main.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE
-          fi
-        done # End of 30runs
+        if $SOFTTARGETS; then
+          python main.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE --softtargets
+        else
+          python main.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE
+        fi
+        # done # End of 30runs
 
         ### Final Aggregation Step ###
-        python src/eval/aggregate_results.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE --softtargets $SOFTTARGETS
+        # python src/eval/aggregate_results.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE --softtargets $SOFTTARGETS
 
       done # End of softtargets
     done # End of architecture

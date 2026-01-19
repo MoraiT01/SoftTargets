@@ -6,4 +6,3 @@ unlearning:
   learning_rate: 0.00001
   optimizer: SGD        # Should be ADAM in the next version
   momentum: 0.9         # Common for SGD-based methods
-  weight_decay: 0.0

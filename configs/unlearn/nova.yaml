@@ -1,0 +1,10 @@
+# configs/unlearning/nova.yaml
+
+unlearning:
+  epochs: 5
+  batch_size: 32         # Should be the same as training batch size for consistency
+  learning_rate: 0.00005
+  optimizer: SGD        # Should be ADAM in the next version
+  momentum: 0.9
+  alpha: 1.0            # Weighting factor between retain and forget losos: L_retain * alpha - L_forget
+  noise_samples: 16     # The number of noise paired with each unlearn sample
