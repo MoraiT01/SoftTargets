@@ -88,15 +88,19 @@ python -c "import torch; print(torch.cuda.is_available())"
 # Here we only run one configuration for demonstration purposes
 
 # Loop over dataset
+# for DATASET in "mnist"
 for DATASET in "mnist" "fashion_mnist"
 do
   # loop over mu_algo
+  # for MU_ALGO in "nova"
   for MU_ALGO in "gradasc" "graddiff" "nova"
   do
     # loop over architecture
+    # for ARCHITECTURE in "cnn"
     for ARCHITECTURE in "mlp" "cnn"
     do
       # loog over softtargets
+      # for SOFTTARGETS in "true"
       for SOFTTARGETS in true false
       do
         echo "Running configuration: Dataset=$DATASET, MU_ALGO=$MU_ALGO, ARCHITECTURE=$ARCHITECTURE, SOFTTARGETS=$SOFTTARGETS"
@@ -105,7 +109,7 @@ do
         # For evaluation purposes, we run it a minimul of 30 times
         # for (( i=1; i<=30; i++ ))
         # do
-          echo "Running iteration: $i"
+        #  echo "Running iteration: $i"
 
         if $SOFTTARGETS; then
           python main.py --dataset $DATASET --mu_algo $MU_ALGO --architecture $ARCHITECTURE --softtargets
