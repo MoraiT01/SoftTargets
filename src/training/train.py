@@ -63,7 +63,7 @@ def train_model(model: Module, train_loader: DataLoader, config: Dict[str, Any],
         print(f"Warning: Unsupported optimizer '{optimizer_name}'. Falling back to Adam.")
 
     # Use NLLLoss because your models output log_softmax
-    criterion = nn.NLLLoss()
+    criterion = nn.CrossEntropyLoss()
     
     # Get ClearML Logger
     logger = None
