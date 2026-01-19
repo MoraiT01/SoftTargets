@@ -27,7 +27,7 @@ class NOVA(BaseUnlearningAlgorithm):
             noise_batch.to(self.device),
         )
 
-        forget_loss = self.criterion(
+        forget_loss = - self.criterion(
             forget_output,
             forget_target,
         )
