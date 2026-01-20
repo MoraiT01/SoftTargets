@@ -1,6 +1,6 @@
 from torch.nn import Module
 from torch.optim import Optimizer
-from torch import randn
+from torch import randn, Tensor
 from typing import Any, Optional
 from clearml import Task
 from src.unlearn.base import BaseUnlearningAlgorithm
@@ -13,23 +13,24 @@ class NOVA(BaseUnlearningAlgorithm):
     
     def forget_loss(
             self,
-            forget_data,
-            forget_target,
+            forget_data: Tensor,
+            forget_target: Tensor,
             optimizer: Optimizer,
             epoch: int,
             ):
 
+        # Make the noise batch
         f = [8]
-        f.extend(forget_data.squeeze(0).shape)
+        f.extend(forget_data.shape)
         noise_batch = randn(f) # Original vector of size 10
-
+        
         forget_output = self.model(
             noise_batch.to(self.device),
         )
 
         forget_loss = - self.criterion(
             forget_output,
-            forget_target,
+            forget_target.expand(8, -1), # extend the target too
         )
 
         optimizer.zero_grad()
