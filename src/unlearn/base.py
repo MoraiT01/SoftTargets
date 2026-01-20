@@ -23,7 +23,7 @@ class BaseUnlearningAlgorithm:
         Initializes the algorithm with the model and configuration.
         A deep-copy of the model is made to ensure the original trained model is preserved.
         """
-        self.model = copy.deepcopy(model)
+        
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -32,7 +32,7 @@ class BaseUnlearningAlgorithm:
         self.alpha = alpha
         self.noise_samples = noise_samples
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model.to(self.device)
+        self.model = copy.deepcopy(model).to(self.device)
         # Assuming model output is log_softmax, so we use NLLLoss
         self.criterion = nn.CrossEntropyLoss()
         

@@ -130,7 +130,7 @@ def training_base(train_loader: DataLoader, model: Module, test_loader: DataLoad
 
     dataset = cast(TrainTestDataset, test_loader.dataset)
 
-    evaluation_results = evaluation(baseline_model, args=args, path=dataset.csv_file)
+    evaluation_results = evaluation(baseline_model, architecture=args.architecture, path=dataset.csv_file)
     
     return baseline_model, evaluation_results
 
@@ -156,7 +156,7 @@ def training_target(train_loader: DataLoader, model: Module, test_loader: DataLo
         test_loader=test_loader 
     )
     dataset = cast(TrainTestDataset, test_loader.dataset)
-    evaluation_results = evaluation(target_model, args=args, path=dataset.csv_file)
+    evaluation_results = evaluation(target_model, architecture=args.architecture, path=dataset.csv_file)
     
     return target_model, evaluation_results
 
@@ -238,7 +238,7 @@ def plotter(
 
     aggregate_runs(args, [acc_diff], [param_change])
 
-@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="3.2.3")
+@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="3.2.4")
 def main(args: Any):
     """
     Main function to parse arguments and run the training/unlearning pipeline.

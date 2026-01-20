@@ -31,19 +31,13 @@ class NOVA(BaseUnlearningAlgorithm):
 
         forget_loss = - self.criterion(
             forget_output,
-            forget_target.expand(8, -1), # extend the target too
+            forget_target.expand(self.noise_samples, -1), # extend the target too
         ) / self.noise_samples
 
         forget_loss.backward()
         optimizer.step()
 
-        # Get ClearML Logger
-        logger = None
-        task = Task.current_task()
-        if task:
-            logger = task.get_logger()
-        if logger:
-            logger.report_scalar(title="Unlearning (GD)", series="Forget Loss", value=forget_loss, iteration=epoch+1)
+        return forget_loss.item()
 
     def unlearn(self, unlearn_data_loader: Any, test_loader: Optional[Any] = None) -> Module:
         """Runs the Gradient Difference unlearning process."""
@@ -61,7 +55,8 @@ class NOVA(BaseUnlearningAlgorithm):
             logger = task.get_logger()
 
         for epoch in range(num_epochs):
-            total_combined_loss = 0.0
+            total_retain_loss = 0.0
+            total_forget_loss = 0.0
             
             for batch in unlearn_data_loader:
                 # GD requires paired data: 'forget' and 'retain' (non-forget)
@@ -73,12 +68,13 @@ class NOVA(BaseUnlearningAlgorithm):
                 f_target = forget_data['labels'].to(self.device)
                 
                 for forget_sample, forget_target in zip(f_data, f_target):
-                    self.forget_loss(
+                    forget_loss = self.forget_loss(
                         forget_sample,
                         forget_target,
                         optimizer,
                         epoch=epoch,
                     )
+                    total_forget_loss += forget_loss
 
                 # --- Retain Loss (L_R) ---
                 r_data = retain_data['input'].to(self.device)
@@ -90,18 +86,20 @@ class NOVA(BaseUnlearningAlgorithm):
 
                 # --- Combined Loss (L_GD) ---
                 # Total Loss to MINIMIZE: alpha * L_R -  L_F
-                combined_loss = alpha * loss_r
+                retain_loss = alpha * loss_r
 
-                combined_loss.backward()
+                retain_loss.backward()
                 optimizer.step()
                 
-                total_combined_loss += combined_loss.item()
-            
-            avg_loss = total_combined_loss / len(unlearn_data_loader)
-            print(f"  GD Epoch {epoch+1}/{num_epochs}: Average Combined Loss: {avg_loss:.4f}")
+                total_retain_loss += retain_loss.item()
+
+            avg_forget_loss = total_forget_loss / len(unlearn_data_loader)
+            avg_retain_loss = total_retain_loss / len(unlearn_data_loader)
+            print(f"  GD Epoch {epoch+1}/{num_epochs}: Average Combined Loss: {avg_retain_loss:.4f}")
             
             if logger:
-                logger.report_scalar(title="Unlearning (GD)", series="Retain Loss", value=avg_loss, iteration=epoch+1)
+                logger.report_scalar(title="Unlearning (GD)", series="Retain Loss", value=avg_retain_loss, iteration=epoch+1)
+                logger.report_scalar(title="Unlearning (GD)", series="Forget Loss", value=avg_forget_loss, iteration=epoch+1)
 
             # Evaluate on Test Data if provided
             if test_loader:

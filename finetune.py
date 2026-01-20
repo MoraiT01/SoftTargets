@@ -62,7 +62,7 @@ optimizer = HyperParameterOptimizer(
     execution_queue='default', # Ensure you have an agent listening to this queue
     time_limit_per_job=30.0, # minutes
     pool_period_min=0.2,
-    total_max_jobs=10,
+    total_max_jobs=50,
 )
 
 # Start the optimization
