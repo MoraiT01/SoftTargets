@@ -23,7 +23,7 @@ from src.training.models.mlp import TwoLayerPerceptron
 from src.eval.main import compare_models, visualize_pipeline_results, final_metrics_summary
 from src.eval.aggregate_results import aggregate_runs
 
-from typing import Dict, Any, Tuple, cast, Optional
+from typing import Dict, Any, Tuple, cast, Optional, Literal
 import yaml
 
 # --- Define your Hyperparameters ---
@@ -184,7 +184,7 @@ def unlearning(
         target_model: Module,
         unlearn_ds: UnlearningPairDataset,
         test_loader: DataLoader,
-        algorithm_name: str,
+        algorithm_name: Literal["gradasc", "graddiff", "nova"],
         epochs: int,
         batch_size: int,
         learning_rate: float,
@@ -281,10 +281,10 @@ def main(args: Any):
     # 4. Unlearn the model
     unlearn_config = yaml.load(open(f"configs/unlearn/{args.mu_algo}.yaml"), Loader=yaml.FullLoader)
     unlearned_model, unlearned_evaluation_results = unlearning(
-        trained_model,
-        unlearn_ds,
-        test_dl,
-        args,
+        target_model=trained_model,
+        unlearn_ds=unlearn_ds,
+        test_loader=test_dl,
+        algorithm_name=args.mu_algo,
         epochs=unlearn_config["unlearning"]["epochs"],
         batch_size=unlearn_config["unlearning"]["batch_size"],
         learning_rate=unlearn_config["unlearning"]["learning_rate"],

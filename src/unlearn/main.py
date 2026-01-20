@@ -1,12 +1,12 @@
 from torch.nn import Module
-from typing import Any, Optional
+from typing import Any, Optional, Literal
 from src.unlearn.algo import gradasc, graddiff, nova
 from src.data.dataset_loaders import UnlearningPairDataset, UnlearningDataLoader 
 
 def run_unlearning(
         trained_model: Module,
         unlearn_ds: UnlearningPairDataset,
-        algorithm_name: str,
+        algorithm_name: Literal["gradasc", "graddiff", "nova"],
         test_loader: Optional[Any] = None,
         epochs: int = 5,
         batch_size: int = 32,
@@ -18,12 +18,10 @@ def run_unlearning(
     ) -> Module:
     """
     Selects, configures, and runs the specified unlearning algorithm.
-    """
-    alg_name_lower = algorithm_name.lower()
-    
+    """    
     unlearn_dl = UnlearningDataLoader(unlearn_ds, batch_size=batch_size, shuffle=True)
     
-    if alg_name_lower == "gradasc": # Gradient Ascent
+    if str(algorithm_name) == "gradasc": # Gradient Ascent
         unlearning_alg = gradasc.GradientAscent(
             model=trained_model,
             epochs=epochs,
@@ -32,7 +30,7 @@ def run_unlearning(
             optimizer=optimizer,
             momentum=momentum,
         )
-    elif alg_name_lower == "graddiff": # Gradient Difference
+    elif str(algorithm_name) == "graddiff": # Gradient Difference
         unlearning_alg = graddiff.GradientDifference(
             model=trained_model,
             epochs=epochs,
@@ -42,7 +40,7 @@ def run_unlearning(
             momentum=momentum,
             alpha=alpha,
         )
-    elif alg_name_lower == "nova": # NOVA
+    elif str(algorithm_name) == "nova": # NOVA
         unlearning_alg = nova.NOVA(
             model=trained_model,
             epochs=epochs,
