@@ -26,6 +26,9 @@ from src.eval.aggregate_results import aggregate_runs
 from typing import Dict, Any, Tuple, cast, Optional, Literal
 import yaml
 
+from clearml import Task
+Task.set_offline(offline_mode=True)
+
 # --- Define your Hyperparameters ---
 HYPERPARAMS = {
     "dataset": "mnist",

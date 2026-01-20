@@ -16,7 +16,6 @@ class NOVA(BaseUnlearningAlgorithm):
             forget_data: Tensor,
             forget_target: Tensor,
             optimizer: Optimizer,
-            epoch: int,
             ):
         optimizer.zero_grad()
 
