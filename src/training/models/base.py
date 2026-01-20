@@ -8,7 +8,8 @@ class StandardScaler(nn.Module):
         self.std = nn.Parameter(std, requires_grad=False)
     
     def forward(self, x):
-        return (x - self.mean[None, :, None, None]) / self.std[None, :, None, None]
+        # Add 1e-7 to prevent division by zero
+        return (x - self.mean[None, :, None, None]) / (self.std[None, :, None, None] + 1e-7)
 
 class BaseModel(nn.Module):
     def __init__(

@@ -6,7 +6,7 @@ from src.training.models.base import BaseModel, StandardScaler
 class CNN(BaseModel):
     def __init__(
             self,
-            standard_scaler: StandardScaler = StandardScaler(torch.tensor([0., 0., 0.]), torch.tensor([1., 1., 1.])),
+            standard_scaler: StandardScaler = StandardScaler(torch.tensor([0.]), torch.tensor([1.])),
             ):
         super().__init__(standard_scaler=standard_scaler)
         

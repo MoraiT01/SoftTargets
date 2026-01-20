@@ -45,9 +45,9 @@ class BaseUnlearningAlgorithm:
         momentum = self.momentum
         weight_decay = 1e-4
         
-        if optimizer_name == "adam":
+        if optimizer_name == "Adam":
             return optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
-        elif optimizer_name == "sgd":
+        elif optimizer_name == "SGD":
             return optim.SGD(self.model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
         else:
             print(f"Warning: Unsupported unlearning optimizer '{optimizer_name}'. Falling back to SGD.")

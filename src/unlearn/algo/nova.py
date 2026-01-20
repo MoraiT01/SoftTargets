@@ -15,9 +15,9 @@ class NOVA(BaseUnlearningAlgorithm):
             self,
             forget_data: Tensor,
             forget_target: Tensor,
-            optimizer: Optimizer,
+            optim: Optimizer,
             ):
-        optimizer.zero_grad()
+        optim.zero_grad()
 
         # Make the noise batch
         f = [self.noise_samples]
@@ -34,17 +34,15 @@ class NOVA(BaseUnlearningAlgorithm):
         ) / self.noise_samples
 
         forget_loss.backward()
-        optimizer.step()
+        optim.step()
 
         return forget_loss.item()
 
     def unlearn(self, unlearn_data_loader: Any, test_loader: Optional[Any] = None) -> Module:
         """Runs the Gradient Difference unlearning process."""
         print(f"Starting Gradient Difference for {self.epochs} epoch(s).")
-        optimizer = self._setup_optimizer()
-        
+        optim = self._setup_optimizer()
         alpha = self.alpha
-        self.model.train()
         num_epochs = self.epochs
         
         # Get ClearML Logger
@@ -53,6 +51,7 @@ class NOVA(BaseUnlearningAlgorithm):
         if task:
             logger = task.get_logger()
 
+        self.model.train()
         for epoch in range(num_epochs):
             total_retain_loss = 0.0
             total_forget_loss = 0.0
@@ -70,8 +69,7 @@ class NOVA(BaseUnlearningAlgorithm):
                     forget_loss = self.forget_loss(
                         forget_sample,
                         forget_target,
-                        optimizer,
-                        epoch=epoch,
+                        optim,
                     )
                     total_forget_loss += forget_loss
 
@@ -79,7 +77,7 @@ class NOVA(BaseUnlearningAlgorithm):
                 r_data = retain_data['input'].to(self.device)
                 r_target_indices = retain_data['labels'].to(self.device)
 
-                optimizer.zero_grad()
+                optim.zero_grad()
                 r_output = self.model(r_data)
                 loss_r = self.criterion(r_output, r_target_indices)
 
@@ -88,13 +86,14 @@ class NOVA(BaseUnlearningAlgorithm):
                 retain_loss = alpha * loss_r
 
                 retain_loss.backward()
-                optimizer.step()
+                optim.step()
                 
                 total_retain_loss += retain_loss.item()
 
             avg_forget_loss = total_forget_loss / len(unlearn_data_loader)
             avg_retain_loss = total_retain_loss / len(unlearn_data_loader)
-            print(f"  GD Epoch {epoch+1}/{num_epochs}: Average Combined Loss: {avg_retain_loss:.4f}")
+            print(f"  GD Epoch {epoch+1}/{num_epochs}: Average Retain Loss: {avg_retain_loss:.4f}")
+            print(f"  GD Epoch {epoch+1}/{num_epochs}: Average Forget Loss: {avg_forget_loss:.4f}")
             
             if logger:
                 logger.report_scalar(title="Unlearning (GD)", series="Retain Loss", value=avg_retain_loss, iteration=epoch+1)

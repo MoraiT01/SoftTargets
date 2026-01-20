@@ -9,7 +9,7 @@ class TwoLayerPerceptron(BaseModel):
     """
     def __init__(
             self,
-            standard_scaler: StandardScaler = StandardScaler(torch.tensor([0., 0., 0.]), torch.tensor([1., 1., 1.])),
+            standard_scaler: StandardScaler = StandardScaler(torch.tensor([0.]), torch.tensor([1.])),
             ):
         """
         Initializes the model
