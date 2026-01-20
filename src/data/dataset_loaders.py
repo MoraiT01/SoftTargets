@@ -18,8 +18,8 @@ IMAGE_ROOT_DIR = "."
 
 # Define standard transformations for the images
 DEFAULT_TRANSFORMS = transforms.Compose([
-    transforms.Resize((32, 32)),
-    transforms.RandomCrop(32, padding=4),      # Augmentation
+    transforms.Resize((28, 28)),
+    transforms.RandomCrop(28, padding=4),      # Augmentation
     transforms.RandomHorizontalFlip(),         # Augmentation
     transforms.RandomRotation(30),             # Augmentation
     transforms.ToTensor(),

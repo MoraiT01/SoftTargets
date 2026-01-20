@@ -16,7 +16,7 @@ class TwoLayerPerceptron(BaseModel):
         """
         super().__init__(standard_scaler=standard_scaler)
         
-        self.fc1 = torch.nn.Linear(1024, 800)
+        self.fc1 = torch.nn.Linear(784, 800)
         self.fc3 = torch.nn.Linear(800, 10)
 
         self.path = None

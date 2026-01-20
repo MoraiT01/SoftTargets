@@ -11,7 +11,7 @@ class CNN(BaseModel):
         super().__init__(standard_scaler=standard_scaler)
         
         # Convolutional layers
-        self.conv1 = torch.nn.Conv2d(1, 32, kernel_size=3, padding=1)  # Input channels=3 for RGB
+        self.conv1 = torch.nn.Conv2d(1, 32, kernel_size=3, padding=1) # Input is a grayscale image
         self.conv2 = torch.nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.conv3 = torch.nn.Conv2d(64, 128, kernel_size=3, padding=1)
         
