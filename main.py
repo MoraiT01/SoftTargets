@@ -106,7 +106,7 @@ def model_creation(architecute: str, train_loader: DataLoader, seed: int) -> Mod
     else:
         raise ValueError(f"Unknown architecture: {architecute}. Options are 'cnn' and 'mlp'.")
 
-@PipelineDecorator.component(cache=False, name = "Train Baseline", return_values=["Baseline Model", "Evaluation Results"])
+@PipelineDecorator.component(cache=True, name = "Train Baseline", return_values=["Baseline Model", "Evaluation Results"])
 def training_base(train_loader: DataLoader, model: Module, test_loader: DataLoader, args: Any) -> Tuple[Module, Dict[str, float]]:
     """
     Trains the provided model using the training data loader and architecture-specific configuration.
@@ -134,7 +134,7 @@ def training_base(train_loader: DataLoader, model: Module, test_loader: DataLoad
     
     return baseline_model, evaluation_results
 
-@PipelineDecorator.component(cache=False, name = "Train Target", return_values=["Trained Target Model", "Evaluation Results"])
+@PipelineDecorator.component(cache=True, name = "Train Target", return_values=["Trained Target Model", "Evaluation Results"])
 def training_target(train_loader: DataLoader, model: Module, test_loader: DataLoader, args: Any) -> Tuple[Module, Dict[str, float]]:
     """
     Trains the provided model using the training data loader and architecture-specific configuration.
