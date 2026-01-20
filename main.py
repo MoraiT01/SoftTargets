@@ -184,6 +184,7 @@ def unlearning(
         target_model: Module,
         unlearn_ds: UnlearningPairDataset,
         test_loader: DataLoader,
+        architecture: Literal["cnn", "mlp"],
         algorithm_name: Literal["gradasc", "graddiff", "nova"],
         epochs: int,
         batch_size: int,
@@ -213,7 +214,7 @@ def unlearning(
         )
 
     dataset = cast(TrainTestDataset, test_loader.dataset)
-    evaluation_results = evaluation(unlearned_model, args=args, path=dataset.csv_file)
+    evaluation_results = evaluation(unlearned_model, architecture=architecture, path=dataset.csv_file)
     
     return unlearned_model, evaluation_results
 
@@ -237,7 +238,7 @@ def plotter(
 
     aggregate_runs(args, [acc_diff], [param_change])
 
-@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="3.2.2")
+@PipelineDecorator.pipeline(name="SoftTargets Pipeline", project="softtargets", version="3.2.3")
 def main(args: Any):
     """
     Main function to parse arguments and run the training/unlearning pipeline.
@@ -284,6 +285,7 @@ def main(args: Any):
         target_model=trained_model,
         unlearn_ds=unlearn_ds,
         test_loader=test_dl,
+        architecture=args.architecture,
         algorithm_name=args.mu_algo,
         epochs=unlearn_config["unlearning"]["epochs"],
         batch_size=unlearn_config["unlearning"]["batch_size"],

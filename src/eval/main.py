@@ -3,7 +3,7 @@ from typing import Dict, Any
 from torch.nn import Module
 from torch.utils.data import DataLoader
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Literal
 
 # Import the metric calculation functions
 from data.utils import load_training_config
@@ -91,13 +91,13 @@ def visualize_pipeline_results(
     print("\n--- Generating Visualizations ---")
     visualize.visualize_all(trained_res, base_res, unlearned_res, param_changes)
 
-def evaluation(model: Module, args: Any, path: str) -> Dict[str, float]: 
+def evaluation(model: Module, architecture: Literal["cnn", "mlp"], path: str) -> Dict[str, float]: 
     """
     Evaluates the model on the test dataset.
     """
     
     # Load architecture-specific config to get the batch size
-    temp_config = load_training_config(args.architecture)
+    temp_config = load_training_config(architecture)
     batch_size = temp_config.get('batch_size', 64)
     
     # Updated to use split="test" instead of "train"

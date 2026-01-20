@@ -43,7 +43,7 @@ class BaseUnlearningAlgorithm:
         
         # Get optional parameters
         momentum = self.momentum
-        weight_decay = 0.0
+        weight_decay = 1e-4
         
         if optimizer_name == "adam":
             return optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -51,7 +51,7 @@ class BaseUnlearningAlgorithm:
             return optim.SGD(self.model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
         else:
             print(f"Warning: Unsupported unlearning optimizer '{optimizer_name}'. Falling back to SGD.")
-            return optim.SGD(self.model.parameters(), lr=lr, momentum=0.9)
+            return optim.SGD(self.model.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay)
             
     def unlearn(self, unlearn_data_loader: Any, test_loader: Optional[Any] = None) -> Module:
         """

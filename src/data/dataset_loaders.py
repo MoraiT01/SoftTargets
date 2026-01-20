@@ -390,3 +390,7 @@ class UnlearningDataLoader(DataLoader):
 
         # Set the custom collation function and pass all other arguments to the parent class
         super().__init__(dataset, collate_fn=unlearning_collate_fn, **kwargs)
+
+    def __len__(self):
+        dataset: UnlearningPairDataset = self.dataset
+        return dataset.__len__()

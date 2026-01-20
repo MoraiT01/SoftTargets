@@ -1,37 +1,76 @@
-"""Handling HP Optimization specifically for the Unlearning Step of the Pipeline"""
-
 from src.utils import load_model_from_task
-
-# The chosen Task were successfully executed before
-baseline    = load_model_from_task("3cebe0e4059e4fa58c57bd9a650ef7f5", "Baseline Model")
-unlearn_ds  = load_model_from_task("ce89c3a50dda4ef1809314d2bce71374", "Test Dataloader")
-test_dl     = load_model_from_task("ce89c3a50dda4ef1809314d2bce71374", "Unlearning Dataset")
-
+from clearml import Task
 from clearml.automation import (
     UniformParameterRange,
-    UniformIntegerParameterRange,
     DiscreteParameterRange,
     HyperParameterOptimizer
 )
-from clearml import Task
+
+# Note: While you load these artifacts here, the Optimizer works by cloning a Base Task.
+# Ensure your Base Task is configured to use these specific artifacts (e.g., via fixed arguments)
+# or that the Base Task logic dynamically loads the correct files.
+# baseline    = load_model_from_task("3cebe0e4059e4fa58c57bd9a650ef7f5", "Baseline Model")
+# unlearn_ds  = load_model_from_task("ce89c3a50dda4ef1809314d2bce71374", "Test Dataloader")
+# test_dl     = load_model_from_task("ce89c3a50dda4ef1809314d2bce71374", "Unlearning Dataset")
 
 Task.init(
     project_name="softtargets",
-    task_name=f"optimizer",
+    task_name="optimizer",
     task_type=Task.TaskTypes.optimizer,
 )
 
 optimizer = HyperParameterOptimizer(
-
-    base_task_id="",
+    # [REQUIRED] ID of the template task to clone. 
+    # This task should be a successful run of the unlearning script.
+    base_task_id="INSERT_YOUR_BASE_TASK_ID_HERE", 
+    
+    # [REQUIRED] Define the search space
     hyper_parameters=[
+        # Example: Tuning the learning rate (match the argument name in your base task)
+        # If your base task uses argparse, it might be 'Args/learning_rate'
+        # If using a config dictionary connected to ClearML, it might be 'General/unlearning.learning_rate'
+        UniformParameterRange(
+            name='kwargs/learning_rate', 
+            min_value=0.00001, 
+            max_value=0.001, 
+            step_size=0.00001
+        ),
+        # Example: Tuning Alpha for Gradient Difference
+        UniformParameterRange(
+            name='kwargs/alpha', 
+            min_value=0.1, 
+            max_value=5.0, 
+            step_size=0.1
+        ),
+        DiscreteParameterRange(
+            name='kwargs/mu_algo', 
+            values=[1, 2, 4, 8, 16, 32]
+        ),
 
     ],
-    objective_metric_title="Accuracy Difference",
-    objective_metric_series="Test: Accuracy",
-    objective_metric_sign="min"
+    
+    # [CHECK] Metric to optimize. 
+    # Based on src/unlearn/algo/graddiff.py, Test Accuracy is logged as:
+    # title="Unlearning (GD)", series="Test Accuracy"
+    objective_metric_title="Unlearning (GD)", 
+    objective_metric_series="Test Accuracy",
+    objective_metric_sign="max", # We generally want to Maximize accuracy (or minimize loss)
+    
+    # Strategy settings
+    max_number_of_concurrent_tasks=2,
+    optimizer_class='OptimizerRandomSearch', # Or OptimizerOptuna for bayesian optimization
+    execution_queue='default', # Ensure you have an agent listening to this queue
+    time_limit_per_job=30.0, # minutes
+    pool_period_min=0.2,
+    total_max_jobs=10,
 )
 
-optimizer.start()
+# Start the optimization
+# Use job_complete_callback=None to avoid blocking locally if running on agents
+optimizer.start(job_complete_callback=None) 
+
+# Wait for completion
 optimizer.wait()
+
+# Stop the optimizer
 optimizer.stop()

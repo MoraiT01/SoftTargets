@@ -18,9 +18,10 @@ class NOVA(BaseUnlearningAlgorithm):
             optimizer: Optimizer,
             epoch: int,
             ):
+        optimizer.zero_grad()
 
         # Make the noise batch
-        f = [8]
+        f = [self.noise_samples]
         f.extend(forget_data.shape)
         noise_batch = randn(f) # Original vector of size 10
         
@@ -31,9 +32,8 @@ class NOVA(BaseUnlearningAlgorithm):
         forget_loss = - self.criterion(
             forget_output,
             forget_target.expand(8, -1), # extend the target too
-        )
+        ) / self.noise_samples
 
-        optimizer.zero_grad()
         forget_loss.backward()
         optimizer.step()
 
@@ -83,14 +83,15 @@ class NOVA(BaseUnlearningAlgorithm):
                 # --- Retain Loss (L_R) ---
                 r_data = retain_data['input'].to(self.device)
                 r_target_indices = retain_data['labels'].to(self.device)
+
+                optimizer.zero_grad()
                 r_output = self.model(r_data)
                 loss_r = self.criterion(r_output, r_target_indices)
 
                 # --- Combined Loss (L_GD) ---
-                # Total Loss to MINIMIZE: (1-alpha) * L_R - alpha * L_F
+                # Total Loss to MINIMIZE: alpha * L_R -  L_F
                 combined_loss = alpha * loss_r
 
-                optimizer.zero_grad()
                 combined_loss.backward()
                 optimizer.step()
                 
