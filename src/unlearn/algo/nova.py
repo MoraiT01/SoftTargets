@@ -69,14 +69,15 @@ class NOVA(BaseUnlearningAlgorithm):
                 
                 # --- Forget Loss (L_F) ---
                 f_data = forget_data['input'].to(self.device)
-                f_target_indices = forget_data['labels'].to(self.device)
+                f_target = forget_data['labels'].to(self.device)
                 
-                self.forget_loss(
-                    f_data,
-                    f_target_indices,
-                    optimizer,
-                    epoch=epoch,
-                )
+                for forget_sample, forget_target in zip(f_data, f_target):
+                    self.forget_loss(
+                        forget_sample,
+                        forget_target,
+                        optimizer,
+                        epoch=epoch,
+                    )
 
                 # --- Retain Loss (L_R) ---
                 r_data = retain_data['input'].to(self.device)
