@@ -91,7 +91,7 @@ class GradientDifference(BaseUnlearningAlgorithm):
                     logger.report_scalar(title="Unlearning (GD)", series="Test Loss", value=test_loss, iteration=epoch+1)
                     logger.report_scalar(title="Unlearning (GD)", series="Test Accuracy", value=test_acc, iteration=epoch+1)
 
-                    logger.report_scaler(title="Metric Changes (GD)" , series="Test Loss", value=delta_loss, iteration=epoch+1)
-                    logger.report_scaler(title="Metric Changes (GD)" , series="Test Accuracy", value=delta_acc, iteration=epoch+1)
+                    logger.report_scalar(title="Metric Changes (GD)" , series="Test Loss", value=delta_loss, iteration=epoch+1)
+                    logger.report_scalar(title="Metric Changes (GD)" , series="Test Accuracy", value=delta_acc, iteration=epoch+1)
             
         return self.model

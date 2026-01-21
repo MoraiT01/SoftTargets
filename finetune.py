@@ -40,7 +40,7 @@ optimizer = HyperParameterOptimizer(
         UniformParameterRange(
             name='kwargs/alpha', 
             min_value=0.1, 
-            max_value=1.0, 
+            max_value=5.0, 
             step_size=0.1
         ),
         # Only for NOVA

@@ -130,7 +130,7 @@ class NOVA(BaseUnlearningAlgorithm):
                     logger.report_scalar(title="Unlearning (NOVA)", series="Test Loss", value=test_loss, iteration=epoch+1)
                     logger.report_scalar(title="Unlearning (NOVA)", series="Test Accuracy", value=test_acc, iteration=epoch+1)
 
-                    logger.report_scaler(title="Metric Changes (NOVA)" , series="Test Loss", value=delta_loss, iteration=epoch+1)
-                    logger.report_scaler(title="Metric Changes (NOVA)" , series="Test Accuracy", value=delta_acc, iteration=epoch+1)
+                    logger.report_scalar(title="Metric Changes (NOVA)" , series="Test Loss", value=delta_loss, iteration=epoch+1)
+                    logger.report_scalar(title="Metric Changes (NOVA)" , series="Test Accuracy", value=delta_acc, iteration=epoch+1)
             
         return self.model
