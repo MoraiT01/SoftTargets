@@ -1,4 +1,5 @@
 from torch.nn import Module
+from torch.nn.utils import clip_grad_norm_
 from typing import Any, Optional
 from clearml import Task
 from src.unlearn.base import BaseUnlearningAlgorithm
@@ -40,6 +41,9 @@ class GradientAscent(BaseUnlearningAlgorithm):
                 
                 # Gradient Ascent: Minimize -Loss (or maximize Loss). We use -loss_f.backward()
                 loss_f.backward() 
+
+                # Clip gradients to prevent explosion
+                clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 optimizer.step()
                 total_loss += loss_f.item()
             

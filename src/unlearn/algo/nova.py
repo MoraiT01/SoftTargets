@@ -1,4 +1,5 @@
 from torch.nn import Module
+from torch.nn.utils import clip_grad_norm_
 from torch.optim import Optimizer
 from torch import randn, Tensor
 from typing import Any, Optional
@@ -33,6 +34,8 @@ class NOVA(BaseUnlearningAlgorithm):
             forget_target.expand(self.noise_samples, -1), # extend the target too
         ) / self.noise_samples
 
+        # Clip gradients to prevent explosion
+        clip_grad_norm_(self.model.parameters(), max_norm=1.0)
         forget_loss.backward()
         optim.step()
 
@@ -84,8 +87,10 @@ class NOVA(BaseUnlearningAlgorithm):
                 # --- Combined Loss (L_GD) ---
                 # Total Loss to MINIMIZE: alpha * L_R -  L_F
                 retain_loss = alpha * loss_r
-
                 retain_loss.backward()
+
+                # Clip gradients to prevent explosion
+                clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 optim.step()
                 
                 total_retain_loss += retain_loss.item()

@@ -1,4 +1,5 @@
 from torch.nn import Module
+from torch.nn.utils import clip_grad_norm_
 from typing import Any, Optional
 from clearml import Task
 from src.unlearn.base import BaseUnlearningAlgorithm
@@ -51,6 +52,9 @@ class GradientDifference(BaseUnlearningAlgorithm):
 
                 optimizer.zero_grad()
                 combined_loss.backward()
+
+                # Clip gradients to prevent explosion
+                clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 optimizer.step()
                 
                 total_combined_loss += combined_loss.item()
