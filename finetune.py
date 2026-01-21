@@ -36,14 +36,16 @@ optimizer = HyperParameterOptimizer(
             step_size=0.00001
         ),
         # Example: Tuning Alpha for Gradient Difference
+        # For GD und NOVA
         UniformParameterRange(
             name='kwargs/alpha', 
             min_value=0.1, 
-            max_value=5.0, 
+            max_value=1.0, 
             step_size=0.1
         ),
+        # Only for NOVA
         DiscreteParameterRange(
-            name='kwargs/mu_algo', 
+            name='kwargs/noise_samples', 
             values=[1, 2, 4, 8, 16, 32]
         ),
 
@@ -51,10 +53,12 @@ optimizer = HyperParameterOptimizer(
     
     # [CHECK] Metric to optimize. 
     # Based on src/unlearn/algo/graddiff.py, Test Accuracy is logged as:
-    # title="Unlearning (GD)", series="Test Accuracy"
-    objective_metric_title="Unlearning (GD)", 
+    # title="Metric Changes (GD)", series="Test Accuracy" # For Gradient Difference
+    # title="Metric Changes (GA)", series="Test Accuracy" # For Gradient Ascent
+    # title="Metric Changes (NOVA)", series="Test Accuracy" # For NOVA
+    objective_metric_title="Unlearning (NOVA)", 
     objective_metric_series="Test Accuracy",
-    objective_metric_sign="max", # We generally want to Maximize accuracy (or minimize loss)
+    objective_metric_sign="min", # We generally want to Maximize accuracy (or minimize loss)
     
     # Strategy settings
     max_number_of_concurrent_tasks=2,
