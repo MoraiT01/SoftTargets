@@ -1,0 +1,234 @@
+{
+    "cnn": {
+        "nova": {
+            "mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.8308239310787471
+                    ],
+                    "param_changes": [
+                        NaN
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.07110694730191738
+                    ],
+                    "param_changes": [
+                        110.1459146393463
+                    ]
+                }
+            },
+            "fashion_mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.7782
+                    ],
+                    "param_changes": [
+                        NaN
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.03249999999999999
+                    ],
+                    "param_changes": [
+                        9.525878409622237
+                    ]
+                }
+            }
+        },
+        "graddiff": {
+            "mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.06877017145642246
+                    ],
+                    "param_changes": [
+                        46.43957658903673
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.23142609977790665
+                    ],
+                    "param_changes": [
+                        74.99042769055814
+                    ]
+                }
+            },
+            "fashion_mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.17450000000000002
+                    ],
+                    "param_changes": [
+                        24.01608705613762
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.1568
+                    ],
+                    "param_changes": [
+                        28.292495442554355
+                    ]
+                }
+            }
+        },
+        "gradasc": {
+            "mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.05234528744063509
+                    ],
+                    "param_changes": [
+                        13.465880966279656
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.061540016277142576
+                    ],
+                    "param_changes": [
+                        13.631108609726653
+                    ]
+                }
+            },
+            "fashion_mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.04099999999999999
+                    ],
+                    "param_changes": [
+                        5.204887503292412
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.04380000000000002
+                    ],
+                    "param_changes": [
+                        6.363652150845155
+                    ]
+                }
+            }
+        }
+    },
+    "mlp": {
+        "gradasc": {
+            "mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.07036218904258437
+                    ],
+                    "param_changes": [
+                        11.013331043766811
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.06542575764032842
+                    ],
+                    "param_changes": [
+                        13.82751878304407
+                    ]
+                }
+            },
+            "fashion_mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.03339999999999999
+                    ],
+                    "param_changes": [
+                        2.5130552081391215
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.030199999999999998
+                    ],
+                    "param_changes": [
+                        5.500427917577326
+                    ]
+                }
+            }
+        },
+        "graddiff": {
+            "mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.09739949215856482
+                    ],
+                    "param_changes": [
+                        54.71500647440553
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.09825520505124138
+                    ],
+                    "param_changes": [
+                        69.31912614405155
+                    ]
+                }
+            },
+            "fashion_mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.025299999999999996
+                    ],
+                    "param_changes": [
+                        10.160184771288186
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.04769999999999999
+                    ],
+                    "param_changes": [
+                        23.600608851760626
+                    ]
+                }
+            }
+        },
+        "nova": {
+            "mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.8844177559318727
+                    ],
+                    "param_changes": [
+                        1550512463.6882935
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.562066955798642
+                    ],
+                    "param_changes": [
+                        164.39492700621486
+                    ]
+                }
+            },
+            "fashion_mnist": {
+                "softtargets_True": {
+                    "accuracies": [
+                        0.7193
+                    ],
+                    "param_changes": [
+                        628596.5476989746
+                    ]
+                },
+                "softtargets_False": {
+                    "accuracies": [
+                        0.09000000000000002
+                    ],
+                    "param_changes": [
+                        80.40351250953972
+                    ]
+                }
+            }
+        }
+    }
+}
